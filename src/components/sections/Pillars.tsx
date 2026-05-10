@@ -8,14 +8,14 @@ const PILLARS: Pillar[] = [
   },
   {
     n: "02",
-    t: "Rates",
-    d: "Fused mid-price oracle. On-chain pools, CEX books, intent flow. Sub-second updates with confidence intervals.",
+    t: "Bridge",
+    d: "Cross-chain routing and settlement. Liquidity-aware bridge selection, fees, finality, and fallback execution.",
   },
   {
     n: "03",
-    t: "Search",
-    d: "High-throughput pathfinder for solver competitions. MEV-aware pruning, deadline-bound, anytime.",
-  },
+    t: "Rates",
+    d: "Fused mid-price oracle. On-chain pools, CEX books, intent flow. Sub-second updates with confidence intervals.",
+  }
 ];
 
 export function Pillars() {
@@ -23,13 +23,13 @@ export function Pillars() {
     <section className="mx-auto max-w-6xl px-5 sm:px-8 py-24">
       <div className="grid lg:grid-cols-12 gap-10">
         <div className="lg:col-span-4">
-          <span className="pixel-tag">The stack</span>
+          <span className="pixel-tag">Our stack</span>
           <h2 className="mt-5 text-2xl sm:text-3xl leading-tight">
             Three primitives.<br />One interface.
           </h2>
           <p className="mt-5 text-muted leading-relaxed text-sm sm:text-base max-w-md">
             We build the boring infrastructure so apps can stop wiring twelve protocols together.
-            Bring an intent — get back execution.
+            Bring an intent, take back execution.
           </p>
         </div>
         <div className="lg:col-span-8 grid sm:grid-cols-3 gap-px bg-line border hairline">
