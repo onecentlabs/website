@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Press_Start_2P, VT323, Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
-import { CursorTrail } from "@/components/CursorTrail";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { CursorTrail } from "@/components/effects/CursorTrail";
 import { site } from "@/lib/site";
 
 const press = Press_Start_2P({

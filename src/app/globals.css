@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ---------- Design tokens ---------- */
 :root {
   --bg: #0a0b0d;
   --bg-2: #101216;
@@ -27,9 +28,8 @@
   --font-mono: var(--font-vt);
 }
 
-* {
-  -webkit-font-smoothing: antialiased;
-}
+/* ---------- Base ---------- */
+* { -webkit-font-smoothing: antialiased; }
 
 html, body {
   background: var(--bg);
@@ -37,7 +37,6 @@ html, body {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
@@ -45,12 +44,13 @@ html, body {
 input, textarea, [contenteditable="true"], code, pre, kbd {
   -webkit-user-select: text;
   -moz-user-select: text;
-  -ms-user-select: text;
   user-select: text;
 }
 
 @media (pointer: fine) {
-  html, body, a, button, input, textarea, [role="button"], label, summary { cursor: none; }
+  html, body, a, button, input, textarea, [role="button"], label, summary {
+    cursor: none;
+  }
 }
 
 h1, h2, h3, h4, h5, h6, .font-display {
@@ -64,15 +64,23 @@ h1, h2, h3, h4, h5, h6, .font-display {
   font-family: var(--font-vt), ui-monospace, monospace;
 }
 
+a { color: inherit; text-decoration: none; }
+a.link { color: var(--ink); border-bottom: 1px solid var(--line); }
+a.link:hover { border-color: var(--accent); }
+
+::selection { background: var(--accent); color: #0a1400; }
+
+/* ---------- Background patterns ---------- */
 .bg-grid {
   background-image:
-    linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
 .hairline { border-color: var(--line); }
 
+/* ---------- Pixel components ---------- */
 .pixel-btn {
   display: inline-flex;
   align-items: center;
@@ -113,13 +121,23 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background: transparent;
 }
 
-.dot { width: 6px; height: 6px; background: var(--accent); display: inline-block; }
-
-.divider {
-  height: 1px;
-  background: var(--line);
+.dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  display: inline-block;
 }
 
+/* ---------- KPI numerals ---------- */
+.kpi-num {
+  font-family: var(--font-vt), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* ---------- Typewriter ---------- */
 .tw-cursor::after {
   content: "";
   display: inline-block;
@@ -130,8 +148,11 @@ h1, h2, h3, h4, h5, h6, .font-display {
   vertical-align: -0.12em;
   animation: tw-blink 1s steps(2) infinite;
 }
-@keyframes tw-blink { 50% { opacity: 0; } }
+@keyframes tw-blink {
+  50% { opacity: 0; }
+}
 
+/* ---------- Custom cursor ---------- */
 .cursor-pixel {
   position: fixed;
   top: 0;
@@ -144,26 +165,16 @@ h1, h2, h3, h4, h5, h6, .font-display {
   transition: opacity 120ms;
   will-change: transform;
 }
+.cursor-pixel svg { display: block; transition: transform 90ms steps(2); }
 .cursor-pixel .cp-fg { fill: var(--accent); transition: fill 90ms steps(2); }
 .cursor-pixel .cp-bg { fill: #6b7280; }
 .cursor-pixel[data-hover="true"] .cp-fg { fill: var(--warn); }
-.cursor-pixel[data-hover="true"] svg { transform: scale(1.15); transform-origin: center; transition: transform 90ms steps(2); }
-.cursor-pixel svg { display: block; transition: transform 90ms steps(2); }
-
-::selection { background: var(--accent); color: #0a1400; }
-
-a { color: inherit; text-decoration: none; }
-a.link { color: var(--ink); border-bottom: 1px solid var(--line); }
-a.link:hover { border-color: var(--accent); }
-
-.kpi-num {
-  font-family: var(--font-vt), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-  font-weight: 400;
-  line-height: 1;
+.cursor-pixel[data-hover="true"] svg {
+  transform: scale(1.15);
+  transform-origin: center;
 }
 
+/* ---------- Responsive tweaks ---------- */
 @media (max-width: 640px) {
   .pixel-btn { font-size: 0.6rem; padding: 0.7rem 0.95rem; }
 }

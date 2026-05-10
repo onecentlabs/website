@@ -19,30 +19,21 @@ export async function GET(req: Request) {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 64,
-          background:
-            "linear-gradient(135deg, #07091a 0%, #0c1030 60%, #131845 100%)",
-          color: "#f5f7ff",
+          background: "#0a0b0d",
+          color: "#f4f5f7",
           fontFamily: "monospace",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              background: "#ffb703",
-              border: "6px solid #ffd23f",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#5a3a00",
-              fontSize: 36,
-              fontWeight: 800,
-            }}
-          >
-            1¢
-          </div>
-          <div style={{ fontSize: 28, letterSpacing: 6, color: "#a3a8d1" }}>ONECENT LABS</div>
+          <svg width="48" height="48" viewBox="0 0 8 8" shapeRendering="crispEdges">
+            <rect x="3" y="0" width="1" height="8" fill="#b6ff3c" />
+            <rect x="2" y="1" width="3" height="1" fill="#b6ff3c" />
+            <rect x="1" y="2" width="1" height="4" fill="#b6ff3c" />
+            <rect x="2" y="6" width="3" height="1" fill="#b6ff3c" />
+            <rect x="5" y="2" width="1" height="1" fill="#b6ff3c" />
+            <rect x="5" y="5" width="1" height="1" fill="#b6ff3c" />
+          </svg>
+          <div style={{ fontSize: 28, letterSpacing: 6, color: "#8a8f99" }}>ONECENT LABS</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div

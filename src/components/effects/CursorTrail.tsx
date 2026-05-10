@@ -71,13 +71,13 @@ export function CursorTrail() {
       const palette = isHover ? COLORS_HOVER : COLORS_DEFAULT;
       traveled += Math.hypot(dx, dy);
       const now = performance.now();
-      if (traveled >= 10 && now - lastSpawn > 28) {
+      if (traveled >= 6 && now - lastSpawn > 16) {
         traveled = 0;
         lastSpawn = now;
-        for (let i = 0; i < 2; i++) {
-          const ox = (Math.random() - 0.5) * 8;
-          const oy = (Math.random() - 0.5) * 8;
-          const max = 32 + Math.random() * 14;
+        for (let i = 0; i < 3; i++) {
+          const ox = (Math.random() - 0.5) * 10;
+          const oy = (Math.random() - 0.5) * 10;
+          const max = 60 + Math.random() * 24;
           particles.current.push({
             x: Math.round(e.clientX + ox),
             y: Math.round(e.clientY + oy),
@@ -90,8 +90,8 @@ export function CursorTrail() {
       }
       mouse.current.lastX = e.clientX;
       mouse.current.lastY = e.clientY;
-      if (particles.current.length > 100) {
-        particles.current.splice(0, particles.current.length - 100);
+      if (particles.current.length > 200) {
+        particles.current.splice(0, particles.current.length - 200);
       }
     };
 
