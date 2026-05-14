@@ -3,10 +3,10 @@ export const site = {
   tagline: "DeFi, abstracted.",
   description:
     "OneCent Labs is a unified suite of on-chain and off-chain services that abstract away the complexity of DeFi. One clean interface for all DeFi applications.",
-  url: "https://onecentlabs.io",
+  url: "https://theonecentlabs.com",
   twitter: "@onecentlabs",
   github: "https://github.com/onecentlabs",
-  email: "hello@onecentlabs.io",
+  email: "onecentlabs@gmail.com",
   keywords: [
     "OneCent Labs",
     "DeFi infrastructure",
@@ -14,7 +14,6 @@ export const site = {
     "DEX aggregator",
     "Exchange rate engine",
     "Intent settlement",
-    "CoW Swap solver",
     "MEV-aware routing",
   ],
 };
