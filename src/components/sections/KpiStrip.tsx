@@ -10,7 +10,7 @@ const KPIS: KpiData[] = [
   {
     label: "Settled volume",
     value: <Counter value={4_328_194_720} format="money-compact" />,
-    sub: "Across testnet + simulated batches",
+    sub: "Across all chains",
   },
   {
     label: "Transactions settled",
