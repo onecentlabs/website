@@ -1,6 +1,7 @@
 # OneCent Labs — Website
 
-Marketing site for OneCent Labs. Next.js 16 (App Router), Tailwind CSS v4, TypeScript.
+Marketing site for OneCent Labs. 
+Next.js 16 (App Router), Tailwind CSS v4, TypeScript.
 
 ## Getting started
 
