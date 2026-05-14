@@ -9,19 +9,19 @@ type KpiData = {
 const KPIS: KpiData[] = [
   {
     label: "Settled volume",
-    value: <Counter value={4_328_194_720} format="money-compact" />,
+    value: <Counter value={0} format="money-compact" />,
     sub: "Across all chains",
   },
   {
     label: "Transactions settled",
-    value: <Counter value={1_284_512} format="compact" />,
+    value: <Counter value={0} format="compact" />,
     sub: "Routed, quoted, and submitted",
   },
   {
     label: "Median latency",
     value: (
       <>
-        <Counter value={68} format="full" />
+        <Counter value={0} format="full" />
         <span className="text-muted text-2xl"> ms</span>
       </>
     ),
