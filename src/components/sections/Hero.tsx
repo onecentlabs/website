@@ -16,7 +16,7 @@ export function Hero() {
           {site.name} is a unified suite of on-chain and off-chain services that abstract away the
           complexity of DeFi. One clean interface for{" "}
           <Typewriter
-            words={["quotes", "swaps", "bridges", "yields", "perps"]}
+            words={["pricing", "routing", "solving", "bridging", "yields", "perps"]}
             className="text-ink"
           />
         </p>
