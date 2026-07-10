@@ -15,7 +15,9 @@ export function CursorTrail() {
     if (!cursor) return;
 
     const onMove = (e: MouseEvent) => {
-      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+      // The sharp tip sits at (9.5,22) in the 24px viewBox — pull it onto the
+      // pointer so the hotspot is the arrow's point.
+      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-9.5px, -22px)`;
       cursor.style.opacity = "1";
       const target = e.target as Element | null;
       const isHover = !!(target && target.closest && target.closest(HOVER_SELECTOR));
@@ -38,24 +40,13 @@ export function CursorTrail() {
 
   return (
     <div ref={cursorRef} aria-hidden data-hover="false" className="cursor-pixel">
-      {/* 16x16 grid, thicker plus arms (4px wide), pixel halo */}
-      <svg viewBox="0 0 16 16" width="26" height="26" shapeRendering="crispEdges">
-        {/* Outline / pixel halo */}
-        <rect className="cp-bg" x="6" y="1" width="4" height="1" />
-        <rect className="cp-bg" x="6" y="14" width="4" height="1" />
-        <rect className="cp-bg" x="1" y="6" width="1" height="4" />
-        <rect className="cp-bg" x="14" y="6" width="1" height="4" />
-        <rect className="cp-bg" x="5" y="2" width="1" height="4" />
-        <rect className="cp-bg" x="10" y="2" width="1" height="4" />
-        <rect className="cp-bg" x="5" y="10" width="1" height="4" />
-        <rect className="cp-bg" x="10" y="10" width="1" height="4" />
-        <rect className="cp-bg" x="2" y="5" width="4" height="1" />
-        <rect className="cp-bg" x="10" y="5" width="4" height="1" />
-        <rect className="cp-bg" x="2" y="10" width="4" height="1" />
-        <rect className="cp-bg" x="10" y="10" width="4" height="1" />
-        {/* Plus body — thick */}
-        <rect className="cp-fg" x="6" y="2" width="4" height="12" />
-        <rect className="cp-fg" x="2" y="6" width="12" height="4" />
+      {/* Solid lime arrow pointer with a concave notch and rounded corners.
+          Blunt back top-left, right point, sharp tip bottom-left. */}
+      <svg viewBox="0 0 24 24" width="24" height="24">
+        {/* Outline halo — same path, drawn wider underneath */}
+        <path className="cp-bg" d="M2.5 2.5 L22 11 L14 14 L9.5 22 Z" />
+        {/* Fill */}
+        <path className="cp-fg" d="M2.5 2.5 L22 11 L14 14 L9.5 22 Z" />
       </svg>
     </div>
   );

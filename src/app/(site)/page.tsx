@@ -3,6 +3,7 @@ import { KpiStrip } from "@/components/sections/KpiStrip";
 import { Pillars } from "@/components/sections/Pillars";
 import { Flow } from "@/components/sections/Flow";
 import { Cta } from "@/components/sections/Cta";
+import { Contact } from "@/components/sections/Contact";
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
       <Pillars />
       <Flow />
       <Cta />
+      <Contact />
     </>
   );
 }

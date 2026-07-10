@@ -20,7 +20,7 @@ export function Hero() {
           />
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
-          <a href={`mailto:${site.email}`} className="pixel-btn">
+          <a href="#contact" className="pixel-btn">
             Get early access ▶
           </a>
           <a

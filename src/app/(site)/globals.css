@@ -178,13 +178,26 @@ a.link:hover { border-color: var(--accent); }
   transition: opacity 120ms;
   will-change: transform;
 }
-.cursor-pixel svg { display: block; transition: transform 90ms steps(2); }
-.cursor-pixel .cp-fg { fill: var(--accent); transition: fill 90ms steps(2); }
-.cursor-pixel .cp-bg { fill: #6b7280; }
-.cursor-pixel[data-hover="true"] .cp-fg { fill: var(--warn); }
+.cursor-pixel svg { display: block; transition: transform 120ms ease; overflow: visible; }
+.cursor-pixel .cp-fg {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: fill 120ms, stroke 120ms;
+}
+.cursor-pixel .cp-bg {
+  fill: rgba(0, 0, 0, 0.55);
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.cursor-pixel[data-hover="true"] .cp-fg { fill: var(--warn); stroke: var(--warn); }
 .cursor-pixel[data-hover="true"] svg {
   transform: scale(1.15);
-  transform-origin: center;
+  transform-origin: 9.5px 22px;
 }
 
 /* ---------- Responsive tweaks ---------- */

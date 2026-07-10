@@ -25,7 +25,7 @@ export function Navbar() {
           >
             GitHub
           </a>
-          <a href={`mailto:${site.email}`} className="pixel-btn">
+          <a href="/#contact" className="pixel-btn">
             Contact
           </a>
         </nav>
