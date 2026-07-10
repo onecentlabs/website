@@ -105,32 +105,35 @@ a.link:hover { border-color: var(--accent); }
   position: fixed;
   top: 0;
   left: 0;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   pointer-events: none;
   z-index: 9999;
   opacity: 0;
   transition: opacity 120ms;
   will-change: transform;
 }
-/* Soft, tight neon glow — low opacity, ~7px spread, no oversized bloom. Two
-   stacked shadows: a wider faint halo + a crisp close ring for definition. */
-.cursor-pixel svg {
-  display: block;
-  filter:
-    drop-shadow(0 0 5px rgba(168, 255, 42, 0.32))
-    drop-shadow(0 0 2px rgba(168, 255, 42, 0.5));
-  transition: filter 140ms ease;
+.cursor-pixel svg { display: block; transition: transform 120ms ease; overflow: visible; }
+.cursor-pixel .cp-fg {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: fill 120ms, stroke 120ms;
 }
-.cursor-pixel .cp-arrow { transition: stroke 140ms ease; }
-/* Over a clickable: intensify the glow + brighten the outline (stays green —
-   precise/active, not a colour swap). */
+.cursor-pixel .cp-bg {
+  fill: rgba(0, 0, 0, 0.55);
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.cursor-pixel[data-hover="true"] .cp-fg { fill: var(--warn); stroke: var(--warn); }
 .cursor-pixel[data-hover="true"] svg {
-  filter:
-    drop-shadow(0 0 8px rgba(168, 255, 42, 0.55))
-    drop-shadow(0 0 3px rgba(203, 255, 102, 0.8));
+  transform: scale(1.15);
+  transform-origin: 9.5px 22px;
 }
-.cursor-pixel[data-hover="true"] .cp-arrow { stroke: #ECFFB0; }
 
 /* ---------- Background ---------- */
 .bg-grid {
