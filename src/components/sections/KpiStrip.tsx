@@ -32,7 +32,7 @@ const KPIS: KpiData[] = [
 export function KpiStrip() {
   return (
     <section className="border-y hairline">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 py-14 grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12">
+      <div className="shell py-14 grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12">
         {KPIS.map((k) => (
           <Kpi key={k.label} {...k} />
         ))}
@@ -45,7 +45,7 @@ function Kpi({ label, value, sub }: KpiData) {
   return (
     <div>
       <div className="font-display text-[10px] tracking-widest uppercase text-muted">{label}</div>
-      <div className="mt-3 text-4xl sm:text-5xl lg:text-6xl text-ink">{value}</div>
+      <div className="mt-3 text-[clamp(2.25rem,4vw,3.75rem)] text-ink">{value}</div>
       <div className="mt-3 text-xs text-muted">{sub}</div>
     </div>
   );

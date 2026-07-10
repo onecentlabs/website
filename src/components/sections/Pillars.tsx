@@ -20,11 +20,11 @@ const PILLARS: Pillar[] = [
 
 export function Pillars() {
   return (
-    <section className="mx-auto max-w-6xl px-5 sm:px-8 py-24">
+    <section className="shell py-24">
       <div className="grid lg:grid-cols-12 gap-10">
         <div className="lg:col-span-4">
           <span className="pixel-tag">Our stack</span>
-          <h2 className="mt-5 text-2xl sm:text-3xl leading-tight">
+          <h2 className="mt-5 text-[clamp(1.5rem,2.5vw,2rem)] leading-tight">
             Three primitives.<br />One interface.
           </h2>
           <p className="mt-5 text-muted leading-relaxed text-sm sm:text-base max-w-md">

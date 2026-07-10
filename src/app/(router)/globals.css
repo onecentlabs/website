@@ -1,0 +1,418 @@
+@import "tailwindcss";
+
+/* ============================================================
+   OneCent Router — pixel/retro design system (matches website)
+   Press Start 2P display + VT323 mono, sharp edges, lime accent,
+   hairline borders, ink-on-accent pixel buttons.
+   ============================================================ */
+:root {
+  /* Elevation ladder — each step is visibly lighter so layers read clearly:
+     page → card → input → pill. */
+  /* Cool, slightly blue-tinted greys — richer than flat neutral greys. */
+  --bg: #08090c;      /* page (darkest) */
+  --bg-2: #12151c;    /* card */
+  --bg-3: #191f28;    /* input / inset surface */
+  --elev: #222a36;    /* token / chain pills (topmost) */
+  --ink: #f3f5f8;
+  --muted: #8a90a0;
+  --faint: #626a79;
+  --line: #212734;
+  --line-2: #2f3947;
+  --accent: #b6ff3c;
+  --accent-ink: #0a1400;
+  --accent-2: #43e7ff;
+  --warn: #ff5d8f;
+  --danger: #ff5d8f;
+  /* One consistent radius scale — outer container is the largest step, inner
+     surfaces/controls a proportional notch tighter (never fully round). */
+  --r: 12px;     /* outer card */
+  --r-sm: 8px;   /* inner surfaces + controls */
+  --r-pill: 999px;
+  --shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.7);
+  --shadow-sm: 0 4px 14px -8px rgba(0, 0, 0, 0.6);
+  /* Card lift: deep drop shadow + accent glow (~20% stronger, wider) so the
+     swap card reads as the brightest, focal element on the page. */
+  --shadow-card:
+    0 30px 70px -24px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 90px -14px rgba(182, 255, 60, 0.2);
+  --glow-accent: 0 0 24px -6px rgba(182, 255, 60, 0.55);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-elev: var(--elev);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-pixel);
+}
+
+/* ---------- Base ---------- */
+* { -webkit-font-smoothing: antialiased; }
+
+html { font-size: 100%; }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea, [contenteditable="true"], code, pre, kbd {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-pixel), var(--font-inter), monospace;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  font-weight: 400;
+}
+
+.font-mono, code, kbd, pre {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+a { color: inherit; text-decoration: none; }
+a.link { color: var(--ink); border-bottom: 1px solid var(--line); }
+a.link:hover { border-color: var(--accent); }
+
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+/* ---------- Custom cursor (pixel arrow + trail, red on hover) ---------- */
+@media (pointer: fine) {
+  html, body, a, button, input, textarea, select, label, summary,
+  [role="button"], [data-cursor="click"] { cursor: none; }
+}
+.cursor-pixel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 120ms;
+  will-change: transform;
+}
+/* Soft, tight neon glow — low opacity, ~7px spread, no oversized bloom. Two
+   stacked shadows: a wider faint halo + a crisp close ring for definition. */
+.cursor-pixel svg {
+  display: block;
+  filter:
+    drop-shadow(0 0 5px rgba(168, 255, 42, 0.32))
+    drop-shadow(0 0 2px rgba(168, 255, 42, 0.5));
+  transition: filter 140ms ease;
+}
+.cursor-pixel .cp-arrow { transition: stroke 140ms ease; }
+/* Over a clickable: intensify the glow + brighten the outline (stays green —
+   precise/active, not a colour swap). */
+.cursor-pixel[data-hover="true"] svg {
+  filter:
+    drop-shadow(0 0 8px rgba(168, 255, 42, 0.55))
+    drop-shadow(0 0 3px rgba(203, 255, 102, 0.8));
+}
+.cursor-pixel[data-hover="true"] .cp-arrow { stroke: #ECFFB0; }
+
+/* ---------- Background ---------- */
+.bg-grid {
+  background-color: var(--bg);
+  /* Grid dimmed hard so it recedes and stops competing with the card. The
+     accent glow now lives on .hero-glow (wide, off-centre) — not here. */
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.013) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.013) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px;
+}
+/* A single deliberate, symmetric glow directly behind the card — contained to a
+   fixed circle centered on screen so it reads as ambient depth, never a stray
+   patch bleeding off an edge. */
+.hero-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: 34rem;
+  height: 34rem;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    rgba(182, 255, 60, 0.16),
+    rgba(182, 255, 60, 0.05) 55%,
+    transparent 78%
+  );
+  filter: blur(28px);
+}
+.hairline { border-color: var(--line); }
+
+/* ---------- Buttons ---------- */
+.btn,
+.pixel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.1rem;
+  font-family: var(--font-pixel), monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--bg);
+  border: 2px solid var(--ink);
+  transition: transform 80ms steps(2), background 120ms ease, color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.pixel-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pixel-btn:active:not(:disabled) { transform: translate(1px, 1px); }
+.pixel-btn:disabled { opacity: 0.4; cursor: default; }
+
+.pixel-btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line);
+}
+.pixel-btn-ghost:hover:not(:disabled) { background: transparent; border-color: var(--ink); color: var(--ink); }
+
+/* Primary CTA — the brightest element on the page: top-lit gradient, inner
+   highlight, accent glow, and a light sheen that sweeps across on hover. */
+.btn-cta:not(:disabled) {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff), var(--accent));
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--glow-accent), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.btn-cta:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 34%, rgba(255, 255, 255, 0.4) 50%, transparent 66%);
+  transform: translateX(-130%);
+  transition: transform 0.65s ease;
+  pointer-events: none;
+}
+.btn-cta:not(:disabled):hover { box-shadow: 0 0 34px -4px rgba(182, 255, 60, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+.btn-cta:not(:disabled):hover::after { transform: translateX(130%); }
+/* Disabled reads as a real, raised button (lighter than any input surface,
+   with a border + top highlight) — not a hollow outline that mimics a field. */
+.btn-cta:disabled {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--elev) 88%, #fff 6%), var(--elev));
+  border-color: var(--line-2);
+  color: var(--muted);
+  opacity: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Swap-direction button — circular, ringed off the cards, spins + glows on hover. */
+.flip-btn {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-2);
+  background: var(--bg-2);
+  color: var(--muted);
+  box-shadow: 0 0 0 5px var(--bg-2);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.16s ease, background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.flip-btn:hover {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: rotate(180deg);
+  box-shadow: 0 0 0 5px var(--bg-2), 0 0 22px -4px rgba(182, 255, 60, 0.65);
+}
+.flip-btn:active { transform: rotate(180deg) scale(0.92); }
+
+/* ---------- Chips / tags ---------- */
+.pixel-tag,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.65rem;
+  font-family: var(--font-pixel), monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: transparent;
+  white-space: nowrap;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  display: inline-block;
+}
+
+/* ---------- Labels / numerals ---------- */
+/* Metadata labels use a clean uppercase sans — pixel font is reserved for the
+   headings + the amount, so the type has contrast instead of shouting at once. */
+.field-label {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-weight: 600;
+}
+.kpi-num {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  line-height: 1;
+}
+/* Readable address/hex — system monospace (not the pixel font), clearer color. */
+.addr {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Panels ---------- */
+/* One outer border for the whole widget. A faint top-edge highlight + a soft
+   top-lit gradient give the card real depth instead of a flat slab. */
+.panel {
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(150, 190, 255, 0.035), transparent 55%),
+    var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  position: relative;
+}
+/* Inner regions read as SURFACES, not boxes — no border by default, just a
+   lighter fill + a hairline inset highlight so they lift off the card. */
+.panel-inset {
+  background: var(--bg-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.028);
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+/* Active = a gentle brighten + a thin accent ring (not a full green border,
+   which reads like a validation error). */
+.panel-inset:focus-within {
+  background: color-mix(in srgb, var(--bg-3) 82%, var(--elev));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent),
+    0 0 26px -14px rgba(182, 255, 60, 0.45);
+}
+
+/* ---------- Inputs ---------- */
+.bare { background: transparent; border: 0; outline: 0; color: var(--ink); }
+.bare::placeholder { color: #7c828d; }
+.amount-input {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 2.75rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  width: 100%;
+  caret-color: var(--accent);
+}
+
+/* ---------- Quote ring ---------- */
+.ring-track { stroke: var(--line-2); }
+.ring-fill { stroke: var(--accent); transition: stroke 0.2s ease; }
+.ring-fill.is-stale { stroke: var(--accent-2); }
+
+/* ---------- Route graph ---------- */
+.edge-path { stroke: var(--line-2); stroke-width: 1.25; }
+.flow-dot { fill: var(--accent); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 70%, transparent)); }
+
+.route-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0 0.7rem;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+.route-node:hover { transform: translateY(-1px); border-color: var(--line-2); }
+.route-node.is-start { border-color: color-mix(in srgb, var(--accent-2) 55%, var(--line)); }
+.route-node.is-dest { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.route-node-tag {
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  font-family: var(--font-pixel), var(--font-inter), monospace;
+  font-size: 0.42rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  background: var(--muted);
+  color: var(--bg);
+}
+.route-node.is-start .route-node-tag { background: var(--accent-2); color: #00171c; }
+.route-node.is-dest .route-node-tag { background: var(--accent); color: var(--accent-ink); }
+
+.venue-chip {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+  color: var(--muted);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Motion ---------- */
+@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.pulse { animation: pulse-soft 1.4s ease-in-out infinite; }
+
+/* ---------- Scrollbars ---------- */
+.thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--line-2); }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Scrollable but with no visible scrollbar (removes the vertical bar). */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* ---------- Focal glow breathing ---------- */
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.55; }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .amount-input { font-size: 2rem; }
+  .pixel-btn { font-size: 0.6rem; padding: 0.7rem 0.95rem; }
+}

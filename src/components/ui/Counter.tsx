@@ -61,7 +61,7 @@ export function Counter({ value, prefix, suffix, duration = 1800, format = "full
   }, [value, duration]);
 
   return (
-    <span ref={ref} className="kpi-num">
+    <span ref={ref} className="kpi-num" suppressHydrationWarning>
       {prefix}
       {formatNumber(n, format, decimals)}
       {suffix}
