@@ -86,7 +86,7 @@ const siteJsonLd = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${press.variable} ${vt.variable} ${inter.variable}`}>
-      <body className="min-h-dvh flex flex-col">
+      <body className="min-h-dvh flex flex-col bg-grid">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:pixel-btn focus:z-50"

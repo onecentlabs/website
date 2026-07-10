@@ -9,9 +9,9 @@ const STEPS: Step[] = [
 
 export function Flow() {
   return (
-    <section className="mx-auto max-w-6xl px-5 sm:px-8 pb-24">
+    <section className="shell pb-24">
       <span className="pixel-tag">Execution Flow</span>
-      <h2 className="mt-5 text-2xl sm:text-3xl">From intent to settlement.</h2>
+      <h2 className="mt-5 text-[clamp(1.5rem,2.5vw,2rem)]">From intent to settlement.</h2>
       <ol className="mt-10 grid sm:grid-cols-4 gap-px bg-line border hairline">
         {STEPS.map((s) => (
           <li key={s.n} className="bg-bg p-6">

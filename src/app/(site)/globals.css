@@ -31,6 +31,8 @@
 /* ---------- Base ---------- */
 * { -webkit-font-smoothing: antialiased; }
 
+html { font-size: 125%; }
+
 html, body {
   background: var(--bg);
   color: var(--ink);
@@ -79,6 +81,17 @@ a.link:hover { border-color: var(--accent); }
 }
 
 .hairline { border-color: var(--line); }
+
+/* ---------- Fluid page container ----------
+   Centered, fluid up to a cap (~50% of an ultra-wide viewport, more on
+   smaller desktops), with gutters that scale with the viewport instead of
+   fixed breakpoint jumps — keeps horizontal padding consistent everywhere. */
+.shell {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 5vw, 4rem);
+}
 
 /* ---------- Pixel components ---------- */
 .pixel-btn {

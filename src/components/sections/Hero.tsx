@@ -3,16 +3,15 @@ import { site } from "@/lib/site";
 
 export function Hero() {
   return (
-    <section className="relative">
-      <div className="absolute inset-0 bg-grid opacity-50" aria-hidden />
-      <div className="relative mx-auto max-w-6xl px-5 sm:px-8 pt-24 sm:pt-36 pb-24 sm:pb-32">
+    <section className="shell flex flex-col justify-center min-h-[calc(100dvh-3.5rem)] py-20">
+      <div>
         <span className="pixel-tag">
           <span className="dot" /> Pre-launch
         </span>
-        <h1 className="mt-8 text-4xl sm:text-6xl lg:text-7xl leading-[1.05] max-w-4xl">
+        <h1 className="mt-8 text-[clamp(2.5rem,6vw,4.75rem)] leading-[1.05] max-w-[16ch]">
           DeFi, abstracted.
         </h1>
-        <p className="mt-6 max-w-2xl text-base sm:text-lg text-muted leading-relaxed">
+        <p className="mt-6 max-w-2xl text-[clamp(1rem,1.4vw,1.15rem)] text-muted leading-relaxed">
           {site.name} is a unified suite of on-chain and off-chain services that abstract away the
           complexity of DeFi. One clean interface for{" "}
           <Typewriter
