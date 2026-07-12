@@ -31,7 +31,7 @@
 /* ---------- Base ---------- */
 * { -webkit-font-smoothing: antialiased; }
 
-html { font-size: 125%; }
+html { font-size: 110%; }
 
 html, body {
   background: var(--bg);
@@ -50,9 +50,8 @@ input, textarea, [contenteditable="true"], code, pre, kbd {
 }
 
 @media (pointer: fine) {
-  html, body, a, button, input, textarea, [role="button"], label, summary {
-    cursor: none;
-  }
+  /* Universal + !important so no element can re-show the native pointer. */
+  *, *::before, *::after { cursor: none !important; }
 }
 
 h1, h2, h3, h4, h5, h6, .font-display {
@@ -67,6 +66,26 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 a { color: inherit; text-decoration: none; }
+
+/* Keyboard focus — visible, accent-colored, never shown on mouse clicks. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Nav links — accent underline slides in on hover. */
+.nav-link { position: relative; }
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.3rem;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms ease;
+}
+.nav-link:hover::after { transform: scaleX(1); }
+
 a.link { color: var(--ink); border-bottom: 1px solid var(--line); }
 a.link:hover { border-color: var(--accent); }
 
@@ -124,14 +143,11 @@ a.link:hover { border-color: var(--accent); }
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.3rem 0.65rem;
   font-family: var(--font-press), monospace;
   font-size: 0.55rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
-  border: 1px solid var(--line);
-  background: transparent;
 }
 
 .dot {
@@ -139,6 +155,26 @@ a.link:hover { border-color: var(--accent); }
   height: 6px;
   background: var(--accent);
   display: inline-block;
+  animation: dot-blink 2.4s steps(2, start) infinite;
+}
+@keyframes dot-blink {
+  50% { opacity: 0.35; }
+}
+
+/* ---------- Scroll reveal ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .dot { animation: none; }
+  .tw-cursor::after { animation: none; }
 }
 
 /* ---------- KPI numerals ---------- */
@@ -173,17 +209,24 @@ a.link:hover { border-color: var(--accent); }
   width: 26px;
   height: 26px;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 2147483647; /* above any overlay */
   opacity: 0;
   transition: opacity 120ms;
   will-change: transform;
 }
-.cursor-pixel svg { display: block; transition: transform 120ms ease; overflow: visible; }
+.cursor-pixel svg {
+  display: block;
+  transition: transform 120ms ease;
+  overflow: visible;
+  /* Slight clockwise tilt, pivoting around the visible tip. */
+  transform: rotate(8deg);
+  transform-origin: 0.5px 0.5px;
+}
 .cursor-pixel .cp-fg {
   fill: var(--accent);
   stroke: var(--accent);
   stroke-width: 1.5;
-  stroke-linejoin: round;
+  stroke-linejoin: miter;
   stroke-linecap: round;
   transition: fill 120ms, stroke 120ms;
 }
@@ -191,13 +234,12 @@ a.link:hover { border-color: var(--accent); }
   fill: rgba(0, 0, 0, 0.55);
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 4;
-  stroke-linejoin: round;
+  stroke-linejoin: miter;
   stroke-linecap: round;
 }
-.cursor-pixel[data-hover="true"] .cp-fg { fill: var(--warn); stroke: var(--warn); }
 .cursor-pixel[data-hover="true"] svg {
-  transform: scale(1.15);
-  transform-origin: 9.5px 22px;
+  transform: rotate(8deg) scale(1.15);
+  transform-origin: 0.5px 0.5px;
 }
 
 /* ---------- Responsive tweaks ---------- */

@@ -15,11 +15,17 @@ export function CursorTrail() {
     if (!cursor) return;
 
     const onMove = (e: MouseEvent) => {
-      // The sharp tip sits at (9.5,22) in the 24px viewBox — pull it onto the
-      // pointer so the hotspot is the arrow's point.
-      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-9.5px, -22px)`;
-      cursor.style.opacity = "1";
+      // The path tip is at (4,4) but the 4px miter halo stroke extends the
+      // visible tip to ~(0.5,0.5) — align that onto the pointer hotspot.
+      cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-0.5px, -0.5px)`;
       const target = e.target as Element | null;
+      // Sequence connect modal lives in a shadow DOM we can't restyle —
+      // hide our cursor there and let the native one take over.
+      if (target?.closest?.("[data-shadow-host]")) {
+        cursor.style.opacity = "0";
+        return;
+      }
+      cursor.style.opacity = "1";
       const isHover = !!(target && target.closest && target.closest(HOVER_SELECTOR));
       cursor.dataset.hover = isHover ? "true" : "false";
     };
@@ -43,12 +49,12 @@ export function CursorTrail() {
   return (
     <div ref={cursorRef} aria-hidden data-hover="false" className="cursor-pixel">
       {/* Solid lime arrow pointer with a concave notch and rounded corners.
-          Blunt back top-left, right point, sharp tip bottom-left. */}
+          Sharp tip top-left, right point, tail bottom. */}
       <svg viewBox="0 0 24 24" width="24" height="24">
         {/* Outline halo — same path, drawn wider underneath */}
-        <path className="cp-bg" d="M2.5 2.5 L22 11 L14 14 L9.5 22 Z" />
+        <path className="cp-bg" d="M4 4 L11.07 21 L13.58 13.61 L21 11.06 Z" />
         {/* Fill */}
-        <path className="cp-fg" d="M2.5 2.5 L22 11 L14 14 L9.5 22 Z" />
+        <path className="cp-fg" d="M4 4 L11.07 21 L13.58 13.61 L21 11.06 Z" />
       </svg>
     </div>
   );

@@ -11,18 +11,10 @@ export function RouterNav() {
         <a href="/" className="flex items-center gap-2.5 group" aria-label={site.name}>
           <Logo size={18} className="text-accent/70 group-hover:text-accent transition-colors" />
           <span className="font-display text-[10px] tracking-[0.18em] uppercase text-ink/65 group-hover:text-ink/90 transition-colors">
-            OneCent <span className="text-muted">Router</span>
+            OneCent
           </span>
         </a>
-        <div className="flex items-center gap-3">
-          <a
-            href="/"
-            className="font-display text-[10px] tracking-widest uppercase text-muted hover:text-ink transition-colors px-3 py-2"
-          >
-            Home
-          </a>
-          <ConnectButton />
-        </div>
+        <ConnectButton />
       </div>
     </header>
   );

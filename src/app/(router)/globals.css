@@ -97,10 +97,17 @@ a.link:hover { border-color: var(--accent); }
 
 ::selection { background: var(--accent); color: var(--accent-ink); }
 
+/* Keyboard focus — visible, accent-colored, never shown on mouse clicks. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* ---------- Custom cursor (pixel arrow + trail, red on hover) ---------- */
 @media (pointer: fine) {
-  html, body, a, button, input, textarea, select, label, summary,
-  [role="button"], [data-cursor="click"] { cursor: none; }
+  /* Universal + !important so third-party portals (Sequence connect modal,
+     etc.) can't re-show the native pointer over the custom cursor. */
+  *, *::before, *::after { cursor: none !important; }
+  /* Sequence connect modal (shadow DOM host): native cursor takes over —
+     CursorTrail hides the custom cursor while hovering it. */
+  [data-shadow-host] { cursor: auto !important; }
 }
 .cursor-pixel {
   position: fixed;
@@ -109,17 +116,24 @@ a.link:hover { border-color: var(--accent); }
   width: 26px;
   height: 26px;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 2147483647; /* above third-party modal overlays */
   opacity: 0;
   transition: opacity 120ms;
   will-change: transform;
 }
-.cursor-pixel svg { display: block; transition: transform 120ms ease; overflow: visible; }
+.cursor-pixel svg {
+  display: block;
+  transition: transform 120ms ease;
+  overflow: visible;
+  /* Slight clockwise tilt, pivoting around the visible tip. */
+  transform: rotate(8deg);
+  transform-origin: 0.5px 0.5px;
+}
 .cursor-pixel .cp-fg {
   fill: var(--accent);
   stroke: var(--accent);
   stroke-width: 1.5;
-  stroke-linejoin: round;
+  stroke-linejoin: miter;
   stroke-linecap: round;
   transition: fill 120ms, stroke 120ms;
 }
@@ -127,13 +141,12 @@ a.link:hover { border-color: var(--accent); }
   fill: rgba(0, 0, 0, 0.55);
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 4;
-  stroke-linejoin: round;
+  stroke-linejoin: miter;
   stroke-linecap: round;
 }
-.cursor-pixel[data-hover="true"] .cp-fg { fill: var(--warn); stroke: var(--warn); }
 .cursor-pixel[data-hover="true"] svg {
-  transform: scale(1.15);
-  transform-origin: 9.5px 22px;
+  transform: rotate(8deg) scale(1.15);
+  transform-origin: 0.5px 0.5px;
 }
 
 /* ---------- Background ---------- */
@@ -189,7 +202,9 @@ a.link:hover { border-color: var(--accent); }
 }
 .pixel-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .pixel-btn:active:not(:disabled) { transform: translate(1px, 1px); }
-.pixel-btn:disabled { opacity: 0.4; cursor: default; }
+/* pointer-events: none — disabled controls swallow mousemove (freezing the
+   custom cursor) and would otherwise show the native cursor on top of it. */
+.pixel-btn:disabled { opacity: 0.4; pointer-events: none; }
 
 .pixel-btn-ghost {
   background: transparent;
