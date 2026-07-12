@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useGasPrice } from "wagmi";
 import { formatUnits } from "viem";
 import { useQuery } from "@tanstack/react-query";
 import { ChainSelect } from "./ChainSelect";
@@ -169,6 +169,24 @@ export function SwapApp() {
   const usdIn = useUsd(chainIn.id, effTokenIn);
   const usdOut = useUsd(chainOut.id, effTokenOut);
 
+  // Network fee: gas limit from the quote simulation (computationUnits) ×
+  // live gas price, priced in USD via the wrapped-native token.
+  const gasPrice = useGasPrice({
+    chainId: chainIn.chainId,
+    query: { refetchInterval: 30_000 },
+  });
+  const nativeToken = useMemo<Token>(
+    () => ({
+      chainId: chainIn.chainId,
+      address: chainIn.wrappedNative,
+      name: chainIn.nativeSymbol,
+      symbol: chainIn.nativeSymbol,
+      decimals: 18,
+    }),
+    [chainIn],
+  );
+  const usdNative = useUsd(chainIn.id, nativeToken);
+
   // Only show amountOut when the displayed quote matches the *current* input.
   // `amount === debouncedAmount` clears it the instant the user types/clears
   // (before the debounce fires); `quoteInputAmount === debouncedAmount` keeps it
@@ -196,6 +214,14 @@ export function SwapApp() {
   const slipBps = settings.slippageBps;
   const minReceived = slipBps != null && outHuman != null ? outHuman * (1 - slipBps / 10_000) : null;
 
+  const gasUnits =
+    quoteMatchesInput && quote?.computationUnits != null ? Number(quote.computationUnits) : null;
+  const gasNative =
+    gasUnits != null && isFinite(gasUnits) && gasUnits > 0 && gasPrice.data != null
+      ? (gasUnits * Number(gasPrice.data)) / 1e18
+      : null;
+  const gasUsd = gasNative != null && usdNative.data != null ? gasNative * usdNative.data : null;
+
   function flip() {
     const a = effTokenIn;
     const b = effTokenOut;
@@ -221,6 +247,13 @@ export function SwapApp() {
 
   return (
     <div className="w-full">
+      {/* title — sits above the widget card */}
+      <div className="mb-4 text-center">
+        <span className="font-display text-[11px] tracking-[0.22em] uppercase text-ink/80">
+          OneCent <span className="text-accent">Router</span>
+        </span>
+      </div>
+
       {/* ── swap widget ── */}
       <div className="panel p-5 space-y-2.5">
         {/* header */}
@@ -267,7 +300,7 @@ export function SwapApp() {
               )}
             </div>
             <div className="mt-3 flex gap-2">
-              {[5, 10, 25, 50, 75, 100].map((pct) => (
+              {[25, 50, 75, 100].map((pct) => (
                 <button
                   key={pct}
                   type="button"
@@ -320,7 +353,7 @@ export function SwapApp() {
               <span className="field-label">Recipient</span>
               {!customRecv ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="rounded-[var(--r-sm)] border border-line bg-elev px-2 py-0.5 font-display text-[0.5rem] uppercase tracking-wider text-muted">Self</span>
+                  <span className="font-display text-[0.5rem] uppercase tracking-wider text-muted">Self</span>
                   <span className="addr text-[12px] text-muted truncate empty:hidden" suppressHydrationWarning>{address ? shortAddr(address) : ""}</span>
                   <button
                     type="button"
@@ -361,8 +394,20 @@ export function SwapApp() {
 
         {/* review — a single terminal-style summary row binds inputs to the action */}
         {!crossChain && !sameToken && (
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-line pt-4 px-1">
+          <div className="grid grid-cols-4 divide-x divide-line border-t border-line pt-4">
             <Stat label="Network" value={chainIn.label} />
+            <Stat
+              label="Gas"
+              value={
+                gasUsd != null
+                  ? `≈ ${fmtUsd(gasUsd)}`
+                  : gasNative != null
+                    ? `${fmtAmount(gasNative)} ${chainIn.nativeSymbol}`
+                    : loading
+                      ? "…"
+                      : "—"
+              }
+            />
             <Stat label="Max slippage" value={slipBps == null ? "Auto" : `${slipBps / 100}%`} />
             <Stat label="Min received" value={minReceived != null && effTokenOut ? `${fmtAmount(minReceived)} ${effTokenOut.symbol}` : loading ? "…" : "—"} />
           </div>
@@ -402,9 +447,9 @@ export function SwapApp() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1 min-w-0">
+    <div className="flex flex-col items-center text-center gap-1 min-w-0 px-2">
       <span className="field-label">{label}</span>
-      <span className="kpi-num text-[13px] text-ink truncate">{value}</span>
+      <span className="kpi-num text-[13px] text-ink truncate max-w-full">{value}</span>
     </div>
   );
 }
