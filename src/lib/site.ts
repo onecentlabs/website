@@ -5,7 +5,6 @@ export const site = {
     "OneCent Labs is a unified suite of on-chain and off-chain services that abstract away the complexity of DeFi. One clean interface for all DeFi applications.",
   url: "https://theonecentlabs.com",
   twitter: "@onecentlabs",
-  github: "https://github.com/onecentlabs",
   email: "onecentlabs@gmail.com",
   keywords: [
     "OneCent Labs",

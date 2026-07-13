@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useAccount, useChainId, useConfig } from "wagmi";
+import { useOpenConnectModal } from "@0xsequence/connect";
 
 const noopSubscribe = () => () => {};
 import {
@@ -38,6 +39,7 @@ export function ExecuteButton({
   const connected = mounted && isConnected;
   const activeChainId = useChainId();
   const config = useConfig();
+  const { setOpenConnectModal } = useOpenConnectModal();
   const [phase, setPhase] = useState<Phase>("idle");
   const [msg, setMsg] = useState<string>("");
   const [txHash, setTxHash] = useState<Hex | null>(null);
@@ -95,9 +97,9 @@ export function ExecuteButton({
         }
       }
 
-      // 3. Swap — send the router calldata verbatim
+      // 3. Trade — send the router calldata verbatim
       setPhase("swap");
-      setMsg("Confirm swap in wallet…");
+      setMsg("Confirm trade in wallet…");
       const hash = await sendTransaction(config, {
         to: router,
         data: quote.calldata as Hex,
@@ -105,11 +107,11 @@ export function ExecuteButton({
         chainId: chain.chainId,
       });
       setTxHash(hash);
-      setMsg("Executing swap…");
+      setMsg("Executing trade…");
       const receipt = await waitForTransactionReceipt(config, { hash, chainId: chain.chainId });
       if (receipt.status === "success") {
         setPhase("done");
-        setMsg("Swap complete");
+        setMsg("Trade complete");
       } else {
         setPhase("error");
         setMsg("Transaction reverted");
@@ -123,23 +125,24 @@ export function ExecuteButton({
 
   const busy = phase === "switch" || phase === "approve" || phase === "swap";
   const label = !connected
-    ? "Connect wallet to swap"
+    ? "Connect wallet to trade"
     : !ready
       ? "Enter an amount"
       : busy
         ? "Working…"
         : phase === "done"
-          ? "Swap again"
+          ? "Trade again"
           : inputToken && amount
-            ? `Swap ${amount} ${inputToken.symbol}`
-            : "Swap";
+            ? `Trade ${amount} ${inputToken.symbol}`
+            : "Trade";
 
   return (
     <div className="space-y-2">
       <button
         className="pixel-btn btn-cta w-full !py-5 text-[0.72rem]"
-        disabled={!connected || !ready || !quote || busy}
-        onClick={execute}
+        data-idle={connected ? undefined : ""}
+        disabled={connected ? !ready || !quote || busy : !mounted}
+        onClick={connected ? execute : () => setOpenConnectModal(true)}
       >
         {label}
       </button>

@@ -10,24 +10,13 @@ export function Navbar() {
           <Logo size={18} className="text-accent" />
           <span className="font-display text-[10px] tracking-[0.18em] uppercase">{site.name}</span>
         </Link>
-        <nav className="flex items-center gap-4 sm:gap-7">
-          <a
-            href="/router"
-            className="nav-link font-display text-[10px] tracking-widest uppercase text-muted hover:text-ink transition-colors px-3 py-2"
-          >
+        <nav className="flex items-center gap-3 sm:gap-4">
+          <Link href="/docs" className="pixel-btn pixel-btn-ghost min-w-[7.5rem]">
+            Docs
+          </Link>
+          <Link href="/router" className="pixel-btn min-w-[7.5rem]">
             Router
-          </a>
-          <a
-            href={site.github}
-            target="_blank"
-            rel="noreferrer"
-            className="nav-link font-display text-[10px] tracking-widest uppercase text-muted hover:text-ink transition-colors px-3 py-2"
-          >
-            GitHub
-          </a>
-          <a href="/#contact" className="pixel-btn">
-            Contact
-          </a>
+          </Link>
         </nav>
       </div>
     </header>

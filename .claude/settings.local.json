@@ -5,7 +5,10 @@
       "Bash(curl -s -o /dev/null -w \"status=%{http_code} time=%{time_total}s\\\\n\" -m 15 \"https://api.theonecentlabs.com/\")",
       "Bash(curl -s -o /dev/null -w \"quote-no-key status=%{http_code}\\\\n\" -m 15 \"https://api.theonecentlabs.com/quote\")",
       "mcp__ide__getDiagnostics",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(git checkout:*)",
+      "Bash(node:*)"
     ]
   }
 }

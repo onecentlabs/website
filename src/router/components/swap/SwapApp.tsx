@@ -23,9 +23,6 @@ const ARBITRUM = SUPPORTED_CHAINS.find((c) => c.id === "arbitrum")!;
 const SETTINGS_KEY = "ocr.settings";
 const DEFAULT_SETTINGS: QuoteSettings = {
   slippageBps: null,
-  patchers: true,
-  baselines: true,
-  maxHops: DEFAULT_MAX_HOPS,
 };
 
 function pickToken(list: Token[], symbols: string[], fallbackIndex: number): Token | null {
@@ -156,9 +153,10 @@ export function SwapApp() {
         userAddress: address ?? PREVIEW_ADDRESS,
         receiverAddress: recvAddr,
         slippageBps: settings.slippageBps,
-        maxHops: settings.maxHops,
-        patchers: settings.patchers,
-        baselines: settings.baselines,
+        maxHops: DEFAULT_MAX_HOPS,
+        // Fixed: our router is the source of truth for the optimizer.
+        patchers: true,
+        baselines: false,
         simulation: true,
       }
     : null;
@@ -260,7 +258,7 @@ export function SwapApp() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="dot" aria-hidden />
-            <h2 className="font-display text-sm tracking-wide">Swap</h2>
+            <h2 className="font-display text-sm tracking-wide">Trade</h2>
           </div>
           <SettingsPanel settings={settings} onChange={setSettings} />
         </div>
@@ -394,21 +392,18 @@ export function SwapApp() {
 
         {/* review — a single terminal-style summary row binds inputs to the action */}
         {!crossChain && !sameToken && (
-          <div className="grid grid-cols-4 divide-x divide-line border-t border-line pt-4">
-            <Stat label="Network" value={chainIn.label} />
+          <div className="grid grid-cols-[1.4fr_0.8fr_1.2fr] divide-x divide-line border-t border-line pt-4">
             <Stat
               label="Gas"
               value={
-                gasUsd != null
-                  ? `≈ ${fmtUsd(gasUsd)}`
-                  : gasNative != null
-                    ? `${fmtAmount(gasNative)} ${chainIn.nativeSymbol}`
-                    : loading
-                      ? "…"
-                      : "—"
+                gasNative != null
+                  ? `${fmtAmount(gasNative)} ${chainIn.nativeSymbol}${gasUsd != null ? ` · ${fmtUsd(gasUsd)}` : ""}`
+                  : loading
+                    ? "…"
+                    : "—"
               }
             />
-            <Stat label="Max slippage" value={slipBps == null ? "Auto" : `${slipBps / 100}%`} />
+            <Stat label="Slippage" value={slipBps == null ? "Auto" : `${slipBps / 100}%`} />
             <Stat label="Min received" value={minReceived != null && effTokenOut ? `${fmtAmount(minReceived)} ${effTokenOut.symbol}` : loading ? "…" : "—"} />
           </div>
         )}
@@ -449,7 +444,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-center text-center gap-1 min-w-0 px-2">
       <span className="field-label">{label}</span>
-      <span className="kpi-num text-[13px] text-ink truncate max-w-full">{value}</span>
+      <span className="kpi-num text-[0.95rem] text-ink truncate max-w-full">{value}</span>
     </div>
   );
 }

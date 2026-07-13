@@ -29,11 +29,11 @@ const config = createConfig("waas", {
   email: true,
   guest: true,
   google: googleClientId ? { clientId: googleClientId } : false,
-  // MetaMask + Coinbase come in via EIP-6963 injected discovery below — skip their
-  // bundled SDK connectors so their telemetry endpoints (cca-lite.coinbase.com /
-  // MetaMask analytics, blocked → "Failed to fetch") never run.
-  coinbase: false,
-  metaMask: false,
+  // Explicit MetaMask/Coinbase connectors so they always show as options (the
+  // modal dedupes them against EIP-6963-discovered extensions). Other installed
+  // wallet extensions (Rabby, etc.) appear via multiInjectedProviderDiscovery.
+  coinbase: true,
+  metaMask: true,
   walletConnect: wcProjectId ? { projectId: wcProjectId } : false,
   enableConfirmationModal: true,
   wagmiConfig: { multiInjectedProviderDiscovery: true },

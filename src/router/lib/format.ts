@@ -42,7 +42,12 @@ export function fmtAmount(n: number): string {
   if (abs >= 1_000_000) return compact.format(n);
   if (abs >= 1) return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
   if (abs >= 0.0001) return n.toLocaleString("en-US", { maximumFractionDigits: 6 });
-  return n.toExponential(2);
+  // Tiny values: subscript-zero notation (0.0₆41) instead of scientific (4.1e-7).
+  const m = abs.toFixed(18).match(/^0\.(0*)([1-9]\d*)/);
+  if (!m) return "0";
+  const sub = String(m[1].length).replace(/\d/g, (d) => "₀₁₂₃₄₅₆₇₈₉"[+d]);
+  const sig = m[2].slice(0, 3).replace(/0+$/, "");
+  return `${n < 0 ? "-" : ""}0.0${sub}${sig}`;
 }
 
 /** Format a USD value. */

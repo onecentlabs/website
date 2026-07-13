@@ -44,7 +44,4 @@ export type UsdResponse = {
 
 export type QuoteSettings = {
   slippageBps: number | null; // null → backend default (300)
-  patchers: boolean;
-  baselines: boolean;
-  maxHops: number;
 };

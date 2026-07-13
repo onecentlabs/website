@@ -2,28 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { QuoteSettings } from "@r/lib/types";
-import {
-  SLIPPAGE_MAX_BPS,
-  SLIPPAGE_MIN_BPS,
-  HARD_MAX_HOPS,
-} from "@r/lib/chains";
-
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={on}
-      onClick={onToggle}
-      className="relative w-10 h-5 rounded-full border border-line transition-colors"
-      style={{ background: on ? "var(--accent)" : "var(--bg-3)" }}
-    >
-      <span
-        className="absolute top-0.5 w-3.5 h-3.5 rounded-full transition-all"
-        style={{ left: on ? "calc(100% - 1.125rem)" : "0.125rem", background: on ? "var(--accent-ink)" : "var(--muted)" }}
-      />
-    </button>
-  );
-}
+import { SLIPPAGE_MAX_BPS, SLIPPAGE_MIN_BPS } from "@r/lib/chains";
 
 const SLIPPAGE_PRESETS = [10, 50, 100];
 
@@ -71,25 +50,25 @@ export function SettingsPanel({
         <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/55 backdrop-blur-sm" onClick={() => setOpen(false)}>
           <div className="panel w-full max-w-sm max-h-[85vh] overflow-y-auto thin-scroll" onClick={(e) => e.stopPropagation()}>
             {/* header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b hairline">
-              <span className="font-display text-xs tracking-wide">Settings</span>
+            <div className="flex items-center justify-between px-6 py-5 border-b hairline">
+              <span className="font-display text-sm tracking-wide">Settings</span>
               <button className="text-muted hover:text-ink transition-colors" onClick={() => setOpen(false)} aria-label="Close">
                 <svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
               </button>
             </div>
 
-            <div className="p-5 space-y-5">
+            <div className="p-6">
               {/* Slippage */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="field-label">Max slippage</span>
-                  <span className="kpi-num text-xs text-accent">
+                  <span className="field-label !text-[0.78rem]">Max slippage</span>
+                  <span className="kpi-num text-base text-accent">
                     {slipPct == null ? "Auto" : `${slipPct}%`}
                   </span>
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex gap-2">
                   <button
-                    className={`flex-1 py-1.5 text-xs font-mono border border-line transition-colors ${
+                    className={`flex-1 py-2.5 text-sm font-mono border border-line transition-colors ${
                       settings.slippageBps == null ? "border-accent text-accent" : "hover:border-ink"
                     }`}
                     onClick={() => {
@@ -102,7 +81,7 @@ export function SettingsPanel({
                   {SLIPPAGE_PRESETS.map((bps) => (
                     <button
                       key={bps}
-                      className={`flex-1 py-1.5 text-xs font-mono border border-line transition-colors ${
+                      className={`flex-1 py-2.5 text-sm font-mono border border-line transition-colors ${
                         settings.slippageBps === bps ? "border-accent text-accent" : "hover:border-ink"
                       }`}
                       onClick={() => {
@@ -128,47 +107,14 @@ export function SettingsPanel({
                         set({ slippageBps: Math.min(SLIPPAGE_MAX_BPS, Math.max(SLIPPAGE_MIN_BPS, bps)) });
                       }
                     }}
-                    className={`flex-1 min-w-0 bare px-2 py-1.5 text-xs font-mono text-center border transition-colors ${
+                    className={`flex-1 min-w-0 bare px-2 py-2.5 text-sm font-mono text-center border transition-colors ${
                       isCustomSlip ? "border-accent text-accent" : "border-line hover:border-ink"
                     }`}
                   />
                 </div>
-              </div>
-
-              {/* Max hops */}
-              <div className="flex items-center justify-between">
-                <span className="field-label">Max hops</span>
-                <div className="flex gap-1.5">
-                  {[1, 2, 3, HARD_MAX_HOPS].map((h) => (
-                    <button
-                      key={h}
-                      className={`w-7 py-1 text-xs font-mono border border-line transition-colors ${
-                        settings.maxHops === h ? "border-accent text-accent" : "hover:border-ink"
-                      }`}
-                      onClick={() => set({ maxHops: h })}
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Baselines */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="block text-sm font-mono">Baselines</span>
-                  <span className="block text-xs text-muted">RFQ on-chain quoters</span>
-                </div>
-                <Toggle on={settings.baselines} onToggle={() => set({ baselines: !settings.baselines })} />
-              </div>
-
-              {/* Patchers */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="block text-sm font-mono">Patchers</span>
-                  <span className="block text-xs text-muted">RFQ market-maker liquidity</span>
-                </div>
-                <Toggle on={settings.patchers} onToggle={() => set({ patchers: !settings.patchers })} />
+                <p className="text-xs text-muted leading-relaxed">
+                  Your trade reverts if the price moves against you by more than this.
+                </p>
               </div>
             </div>
           </div>

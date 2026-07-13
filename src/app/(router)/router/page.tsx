@@ -7,7 +7,7 @@ export default function Page() {
       <div className="hero-glow" aria-hidden />
 
       <div className="relative mx-auto flex h-full max-w-5xl items-center justify-center px-6">
-        <div className="w-full max-w-lg lg:w-[29rem]">
+        <div className="w-full max-w-lg lg:w-[31rem]">
           <SwapApp />
         </div>
       </div>

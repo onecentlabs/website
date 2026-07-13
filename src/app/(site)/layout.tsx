@@ -1,31 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Press_Start_2P, VT323, Inter } from "next/font/google";
 import Script from "next/script";
-import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { CursorTrail } from "@/components/effects/CursorTrail";
 import { site } from "@/lib/site";
-
-const press = Press_Start_2P({
-  weight: "400",
-  variable: "--font-press",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const vt = VT323({
-  weight: "400",
-  variable: "--font-vt",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const viewport: Viewport = {
   themeColor: "#0a0b0d",
@@ -72,7 +49,6 @@ const orgJsonLd = {
   name: site.name,
   url: site.url,
   logo: `${site.url}/icon.svg`,
-  sameAs: [site.github],
   description: site.description,
 };
 
@@ -83,27 +59,24 @@ const siteJsonLd = {
   url: site.url,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${press.variable} ${vt.variable} ${inter.variable}`}>
-      <body className="min-h-dvh flex flex-col bg-grid">
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:pixel-btn focus:z-50"
-        >
-          Skip to content
-        </a>
-        <CursorTrail />
-        <Navbar />
-        <main id="main" className="flex-1">{children}</main>
-        <Footer />
-        <Script id="ld-org" type="application/ld+json" strategy="afterInteractive">
-          {JSON.stringify(orgJsonLd)}
-        </Script>
-        <Script id="ld-site" type="application/ld+json" strategy="afterInteractive">
-          {JSON.stringify(siteJsonLd)}
-        </Script>
-      </body>
-    </html>
+    <div className="app-site bg-grid min-h-dvh flex flex-col">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:pixel-btn focus:z-50"
+      >
+        Skip to content
+      </a>
+      <Navbar />
+      <main id="main" className="flex-1">{children}</main>
+      <Footer />
+      <Script id="ld-org" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(orgJsonLd)}
+      </Script>
+      <Script id="ld-site" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(siteJsonLd)}
+      </Script>
+    </div>
   );
 }
