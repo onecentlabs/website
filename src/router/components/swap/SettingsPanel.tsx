@@ -48,7 +48,7 @@ export function SettingsPanel({
 
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/55 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="panel w-full max-w-sm max-h-[85vh] overflow-y-auto thin-scroll" onClick={(e) => e.stopPropagation()}>
+          <div className="panel w-full max-w-sm max-h-[85dvh] overflow-y-auto thin-scroll" onClick={(e) => e.stopPropagation()}>
             {/* header */}
             <div className="flex items-center justify-between px-6 py-5 border-b hairline">
               <span className="text-[15px] font-semibold tracking-tight">Settings</span>
@@ -66,9 +66,9 @@ export function SettingsPanel({
                     {slipPct == null ? "Auto" : `${slipPct}%`}
                   </span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
-                    className={`flex-1 py-2.5 text-sm font-mono border border-line transition-colors ${
+                    className={`flex-1 min-w-[4rem] py-2.5 text-sm font-mono border border-line transition-colors ${
                       settings.slippageBps == null ? "border-accent text-accent" : "hover:border-ink"
                     }`}
                     onClick={() => {
@@ -81,7 +81,7 @@ export function SettingsPanel({
                   {SLIPPAGE_PRESETS.map((bps) => (
                     <button
                       key={bps}
-                      className={`flex-1 py-2.5 text-sm font-mono border border-line transition-colors ${
+                      className={`flex-1 min-w-[4rem] py-2.5 text-sm font-mono border border-line transition-colors ${
                         settings.slippageBps === bps ? "border-accent text-accent" : "hover:border-ink"
                       }`}
                       onClick={() => {
@@ -107,7 +107,7 @@ export function SettingsPanel({
                         set({ slippageBps: Math.min(SLIPPAGE_MAX_BPS, Math.max(SLIPPAGE_MIN_BPS, bps)) });
                       }
                     }}
-                    className={`flex-1 min-w-0 bare px-2 py-2.5 text-sm font-mono text-center border transition-colors ${
+                    className={`flex-1 min-w-[4rem] bare px-2 py-2.5 text-sm font-mono text-center border transition-colors ${
                       isCustomSlip ? "border-accent text-accent" : "border-line hover:border-ink"
                     }`}
                   />

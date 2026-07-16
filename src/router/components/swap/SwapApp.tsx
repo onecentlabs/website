@@ -304,12 +304,14 @@ export function SwapApp() {
       {/* ── swap widget ── */}
       <div className={`swap-card panel p-4 sm:p-5 space-y-3${incognito ? " incognito" : ""}`}>
         {/* header */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="dot" aria-hidden />
-            <h2 className="text-[22px] tracking-tight">{incognito ? "Private Trade" : "Trade"}</h2>
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <span className="dot shrink-0" aria-hidden />
+            <h2 className="text-lg sm:text-[22px] tracking-tight truncate">
+              {incognito && <span className="hidden sm:inline">Private </span>}Trade
+            </h2>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <IncognitoToggle on={incognito} onToggle={() => setIncognito((v) => !v)} />
             <SettingsPanel settings={settings} onChange={setSettings} />
           </div>
