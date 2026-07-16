@@ -245,13 +245,6 @@ export function SwapApp() {
 
   return (
     <div className="w-full">
-      {/* title — sits above the widget card */}
-      <div className="mb-4 text-center">
-        <span className="font-display text-[11px] tracking-[0.22em] uppercase text-ink/80">
-          OneCent <span className="text-accent">Router</span>
-        </span>
-      </div>
-
       {/* ── swap widget ── */}
       <div className="panel p-5 space-y-2.5">
         {/* header */}

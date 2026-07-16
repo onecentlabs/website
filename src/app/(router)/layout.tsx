@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import { Web3Provider } from "@r/components/providers/Web3Provider";
 import { Guards } from "@r/components/effects/Guards";
-import { RouterNav } from "@r/components/layout/RouterNav";
+import { Navbar } from "@/components/layout/Navbar";
+import { ConnectButton } from "@r/components/swap/ConnectButton";
 import { site } from "@r/lib/site";
 
 export const viewport: Viewport = {
@@ -24,7 +26,25 @@ export default function RouterLayout({ children }: { children: React.ReactNode }
     <div className="app-router bg-grid h-dvh overflow-hidden flex flex-col">
       <Web3Provider>
         <Guards />
-        <RouterNav />
+        <Navbar
+          brand={
+            <>
+              OneCent{" "}
+              <span className="brand-swap">
+                <span className="swap-out">Router</span>
+                <span className="swap-in">Labs</span>
+              </span>
+            </>
+          }
+          actions={
+            <>
+              <Link href="/docs" className="pixel-btn pixel-btn-ghost min-w-[7.5rem]">
+                Docs
+              </Link>
+              <ConnectButton />
+            </>
+          }
+        />
         <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
       </Web3Provider>
     </div>

@@ -2,20 +2,30 @@
 
 import { useSyncExternalStore } from "react";
 import { useAccount, useDisconnect } from "wagmi";
+import { useOpenConnectModal } from "@0xsequence/connect";
 import { shortAddr } from "@r/lib/format";
 
 const noop = () => () => {};
 
-/** Shows the connected address + disconnect in the nav. Renders nothing when
- *  disconnected — connecting happens via the widget CTA. */
+/** Nav wallet control: a Connect button when disconnected (opens the connect
+ *  modal), or the connected address + disconnect once connected. */
 export function ConnectButton() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const { setOpenConnectModal } = useOpenConnectModal();
   // false on server + first client render, true after hydration — no setState.
   const mounted = useSyncExternalStore(noop, () => true, () => false);
 
   // Avoid hydration mismatch — wallet state is client-only.
-  if (!mounted || !isConnected || !address) return null;
+  if (!mounted) return null;
+
+  if (!isConnected || !address) {
+    return (
+      <button onClick={() => setOpenConnectModal(true)} className="pixel-btn min-w-[7.5rem]">
+        Connect Wallet
+      </button>
+    );
+  }
 
   return (
     <div className="flex items-stretch gap-2">
