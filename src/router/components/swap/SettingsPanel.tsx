@@ -51,7 +51,7 @@ export function SettingsPanel({
           <div className="panel w-full max-w-sm max-h-[85vh] overflow-y-auto thin-scroll" onClick={(e) => e.stopPropagation()}>
             {/* header */}
             <div className="flex items-center justify-between px-6 py-5 border-b hairline">
-              <span className="font-display text-sm tracking-wide">Settings</span>
+              <span className="text-[15px] font-semibold tracking-tight">Settings</span>
               <button className="text-muted hover:text-ink transition-colors" onClick={() => setOpen(false)} aria-label="Close">
                 <svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
               </button>

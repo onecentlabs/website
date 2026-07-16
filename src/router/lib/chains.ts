@@ -20,7 +20,17 @@ export type SupportedChain = {
   nativeSymbol: string;
   /** wrapped-native token address — the /usd endpoint prices this, not the native sentinel */
   wrappedNative: string;
+  /** address family (defaults to EVM); set "svm" when Solana is added */
+  kind?: ChainKind;
 };
+
+/** Address family — drives recipient validation. Solana ("svm") is future. */
+export type ChainKind = "evm" | "svm";
+
+/** Address family of a chain — EVM unless explicitly marked otherwise. */
+export function chainKind(chain: SupportedChain | undefined): ChainKind {
+  return chain?.kind ?? "evm";
+}
 
 export const SUPPORTED_CHAINS: SupportedChain[] = [
   { id: "ethereum", chainId: 1, label: "Ethereum", viem: mainnet, nativeSymbol: "ETH", wrappedNative: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },

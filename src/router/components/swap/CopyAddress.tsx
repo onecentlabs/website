@@ -8,7 +8,7 @@ import { shortAddr } from "@r/lib/format";
  * on hover, shows "Copied" briefly). Rendered inside token-row <button>s, so it
  * uses role="button" (not a nested <button>) and stops propagation.
  */
-export function CopyAddress({ address }: { address: string }) {
+export function CopyAddress({ address, className = "" }: { address: string; className?: string }) {
   const [done, setDone] = useState(false);
 
   function copy(e: React.SyntheticEvent) {
@@ -33,7 +33,7 @@ export function CopyAddress({ address }: { address: string }) {
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") copy(e);
       }}
-      className={`addr text-[13px] transition-colors ${done ? "text-accent" : "text-ink/70 hover:text-accent"}`}
+      className={`addr text-[13px] transition-colors ${className} ${done ? "text-accent" : "text-ink/70 hover:text-accent"}`}
     >
       {done ? "Copied" : shortAddr(address)}
     </span>
