@@ -27,15 +27,6 @@ export default function RouterLayout({ children }: { children: React.ReactNode }
       <Web3Provider>
         <Guards />
         <Navbar
-          brand={
-            <>
-              OneCent{" "}
-              <span className="brand-swap">
-                <span className="swap-out">Router</span>
-                <span className="swap-in">Labs</span>
-              </span>
-            </>
-          }
           actions={
             <>
               <Link href="/docs" className="pixel-btn pixel-btn-ghost min-w-[7.5rem]">

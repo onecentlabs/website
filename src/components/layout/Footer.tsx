@@ -35,7 +35,6 @@ export function Footer() {
           <span>· © {new Date().getFullYear()}</span>
         </div>
         <div className="flex items-center gap-5">
-          <a className="link" href={`mailto:${site.email}`}>{site.email}</a>
           {socials.map((s) => (
             <a
               key={s.label}

@@ -26,6 +26,7 @@ const ARBITRUM = SUPPORTED_CHAINS.find((c) => c.id === "arbitrum")!;
 const SETTINGS_KEY = "ocr.settings";
 const DEFAULT_SETTINGS: QuoteSettings = {
   slippageBps: null,
+  amountSlider: false,
 };
 
 function pickToken(list: Token[], symbols: string[], fallbackIndex: number): Token | null {
@@ -84,6 +85,9 @@ export function SwapApp() {
       /* ignore quota/availability errors */
     }
   }, [settings]);
+
+  // Incognito / private mode — reskins the widget and flags the quote as private.
+  const [incognito, setIncognito] = useState(false);
 
   // Optional receiver: send the swap output to an address other than the sender.
   // Validated + normalized against the OUTPUT chain's address family (EVM today).
@@ -185,6 +189,9 @@ export function SwapApp() {
   // what a *missing* simulatedAmountOut means (see below).
   const amountInBase = effTokenIn && amountValid ? toBaseUnits(debouncedAmount, effTokenIn.decimals) : null;
   const hasSufficientBal = !!address && inBalValue != null && amountInBase != null && inBalValue >= amountInBase;
+  // Connected + valid amount, but the on-chain balance (public RPC) can't cover it.
+  const insufficientBalance =
+    !!address && inBalValue != null && amountInBase != null && inBalValue < amountInBase;
 
   const quoteArgs: QuoteArgs | null = ready
     ? {
@@ -200,6 +207,7 @@ export function SwapApp() {
         patchers: true,
         baselines: false,
         simulation: true,
+        incognito,
       }
     : null;
 
@@ -294,14 +302,17 @@ export function SwapApp() {
   return (
     <div className="w-full">
       {/* ── swap widget ── */}
-      <div className="swap-card panel p-4 sm:p-5 space-y-3">
+      <div className={`swap-card panel p-4 sm:p-5 space-y-3${incognito ? " incognito" : ""}`}>
         {/* header */}
         <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <span className="dot" aria-hidden />
-            <h2 className="text-[22px] tracking-tight">Trade</h2>
+            <h2 className="text-[22px] tracking-tight">{incognito ? "Private Trade" : "Trade"}</h2>
           </div>
-          <SettingsPanel settings={settings} onChange={setSettings} />
+          <div className="flex items-center gap-1.5">
+            <IncognitoToggle on={incognito} onToggle={() => setIncognito((v) => !v)} />
+            <SettingsPanel settings={settings} onChange={setSettings} />
+          </div>
         </div>
 
         {/* FROM — the source surface */}
@@ -331,14 +342,15 @@ export function SwapApp() {
               />
             </div>
             <div className="mt-1.5 flex items-center justify-between gap-2">
-              <span className="text-[16px] text-ink/60 addr truncate">{inUsd != null ? `≈ ${fmtUsd(inUsd)}` : ""}</span>
+              <span className="text-[16px] text-ink/60 addr truncate">≈ {fmtUsd(inUsd ?? 0)}</span>
               {hasInBal && effTokenIn && (
                 <span className="text-[16px] text-ink/60 addr truncate">
                   {fmtAmount(fromBaseUnits(String(inBalValue), effTokenIn.decimals))} {effTokenIn.symbol}
                 </span>
               )}
             </div>
-            {/* balance slider — snaps to 0/25/50/75/MAX; drag or click a tick */}
+            {/* balance slider — optional (Settings › Amount slider); snaps to 0/25/50/75/MAX */}
+            {settings.amountSlider && (
             <div className="mt-4 px-0.5">
               <input
                 type="range"
@@ -366,6 +378,7 @@ export function SwapApp() {
                 ))}
               </div>
             </div>
+            )}
           </div>
 
         {/* flip — circular, centered between the cards */}
@@ -400,26 +413,25 @@ export function SwapApp() {
                 onClick={() => setModal({ side: "out", chainEditable: false })}
               />
             </div>
-            {outUsd != null && (
-              <div className="mt-1.5 text-[16px] text-ink/60 addr">≈ {fmtUsd(outUsd)}</div>
-            )}
-
-            {/* recipient — reads "RECIPIENT: SELF"; click the value to open the address book */}
-            <div className="pt-2 flex items-center gap-1.5 min-w-0">
-              <span className="field-label shrink-0">Recipient:</span>
-              <button
-                type="button"
-                onClick={() => setRecvModal(true)}
-                className="group min-w-0 truncate !text-ink/70 hover:!text-accent transition-colors"
-                suppressHydrationWarning
-              >
-                {customRecv && receiverValid ? (
-                  // Address/label keeps its real casing (checksummed 0x…, not 0X…).
-                  <span className="addr text-[16px] !text-ink/70 group-hover:!text-accent transition-colors">{getRecipientLabel(receiver) ?? shortAddr(receiver)}</span>
-                ) : (
-                  <span className="field-label !text-ink/70 group-hover:!text-accent transition-colors">Self</span>
-                )}
-              </button>
+            {/* usd (left) + recipient "RECIPIENT: SELF" (right) share one row to save space */}
+            <div className="mt-1.5 flex items-center justify-between gap-3">
+              <span className="text-[16px] text-ink/60 addr truncate">≈ {fmtUsd(outUsd ?? 0)}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="field-label shrink-0">Recipient:</span>
+                <button
+                  type="button"
+                  onClick={() => setRecvModal(true)}
+                  className="group min-w-0 truncate !text-ink/70 hover:!text-accent transition-colors"
+                  suppressHydrationWarning
+                >
+                  {customRecv && receiverValid ? (
+                    // Address/label keeps its real casing (checksummed 0x…, not 0X…).
+                    <span className="addr text-[16px] !text-ink/70 group-hover:!text-accent transition-colors">{getRecipientLabel(receiver) ?? shortAddr(receiver)}</span>
+                  ) : (
+                    <span className="field-label !text-ink/70 group-hover:!text-accent transition-colors">Self</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -449,8 +461,19 @@ export function SwapApp() {
           {!crossChain && !sameToken && !error && simFailed && (
             <div className="flex items-center gap-2 px-1 text-[13px] text-danger"><span aria-hidden>⚠</span> Simulation failed — amount shown is a routing estimate.</div>
           )}
-          <ExecuteButton chain={chainIn} inputToken={effTokenIn} amount={debouncedAmount} quote={quote} ready={ready} />
+          <ExecuteButton chain={chainIn} inputToken={effTokenIn} amount={debouncedAmount} quote={quote} ready={ready} insufficientBalance={insufficientBalance} />
         </div>
+      </div>
+
+      {/* attribution — sits below the card */}
+      <div className="mt-3 text-center text-[12px] text-faint">
+        {incognito ? (
+          <span className="inline-flex items-center gap-1.5">
+            <IncognitoGlyph size={13} /> Private Trade · <span className="text-muted">OneCent Router</span>
+          </span>
+        ) : (
+          <>Powered by <span className="text-muted">OneCent Router</span></>
+        )}
       </div>
 
       {modal && (
@@ -483,5 +506,59 @@ function Stat({ label, value }: { label: string; value: string }) {
       <span className="field-label">{label}</span>
       <span className="kpi-num text-[0.95rem] text-ink/70 truncate max-w-full">{value}</span>
     </div>
+  );
+}
+
+/** Incognito "glasses + hat" glyph — the universal private-browsing mark. */
+function IncognitoGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 12h16M8 8l-1 4M16 8l1 4" />
+      <circle cx="7.5" cy="15" r="2.5" />
+      <circle cx="16.5" cy="15" r="2.5" />
+      <path d="M10 15c.7-.6 1.3-.6 2 0" />
+    </svg>
+  );
+}
+
+/** Open-eye glyph — the "public" counterpart to the incognito mark. */
+function PublicGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+/** Icon + label + switch. The label shows the CURRENT mode (Public / Private). */
+function IncognitoToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onToggle}
+      title={on ? "Private mode on — click to trade publicly" : "Public mode — click to trade privately"}
+      aria-label="Private mode"
+      className={`group inline-flex items-center gap-2 rounded-full border pl-2.5 pr-1 py-1 transition-colors ${
+        on ? "border-accent bg-accent/10 text-accent" : "border-line-2 bg-elev text-muted hover:text-ink"
+      }`}
+    >
+      {on ? <IncognitoGlyph size={14} /> : <PublicGlyph size={14} />}
+      <span className="text-[11px] font-mono uppercase tracking-wider">{on ? "Private" : "Public"}</span>
+      {/* switch track */}
+      <span
+        className={`relative inline-flex h-[18px] w-8 shrink-0 items-center rounded-full transition-colors ${
+          on ? "bg-accent" : "bg-line-2"
+        }`}
+      >
+        <span
+          className={`inline-flex h-3.5 w-3.5 rounded-full bg-bg transition-transform duration-200 ${
+            on ? "translate-x-[1.05rem]" : "translate-x-[0.15rem]"
+          }`}
+        />
+      </span>
+    </button>
   );
 }

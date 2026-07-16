@@ -17,7 +17,7 @@ const QUOTE_KEYS = [
   "blockchainId", "inputToken", "outputToken", "inputAmount", "userAddress",
   "receiverAddress", "simulationAddress", "slippageBps", "maxHops",
   "simulation", "patchers", "baselines", "rawBlockchainId", "cid",
-  "tokenData",
+  "tokenData", "incognito",
 ] as const;
 
 const PRICE_KEYS = ["chain", "token", "foreign_token", "max_hops"] as const;

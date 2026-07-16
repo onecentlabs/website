@@ -75,11 +75,15 @@ export async function GET(req: Request) {
       next: { revalidate: 86400 },
     });
     if (!upstream.ok || !upstream.body) return blank();
+    // Only ever serve images from this route — a compromised registry can't make
+    // us proxy html/js/etc. Anything non-image is rejected.
     const ct = upstream.headers.get("content-type") || "image/png";
+    if (!ct.toLowerCase().startsWith("image/")) return blank();
     return new Response(upstream.body, {
       headers: {
         "content-type": ct,
         "cache-control": "public, max-age=86400, immutable",
+        "x-content-type-options": "nosniff",
       },
     });
   } catch {

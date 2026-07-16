@@ -25,12 +25,14 @@ export function ExecuteButton({
   amount,
   quote,
   ready,
+  insufficientBalance = false,
 }: {
   chain: SupportedChain;
   inputToken: Token | null;
   amount: string;
   quote: QuoteResponse | null;
   ready: boolean;
+  insufficientBalance?: boolean;
 }) {
   const { address, isConnected } = useAccount();
   // Wallet state is client-only; gate it so SSR + first client render agree
@@ -128,20 +130,22 @@ export function ExecuteButton({
     ? "Connect wallet to trade"
     : !ready
       ? "Enter an amount"
-      : busy
-        ? "Working…"
-        : phase === "done"
-          ? "Trade again"
-          : inputToken && amount
-            ? `Trade ${amount} ${inputToken.symbol}`
-            : "Trade";
+      : insufficientBalance
+        ? "Insufficient Balance"
+        : busy
+          ? "Working…"
+          : phase === "done"
+            ? "Trade again"
+            : inputToken && amount
+              ? `Trade ${amount} ${inputToken.symbol}`
+              : "Trade";
 
   return (
     <div className="space-y-2">
       <button
         className="pixel-btn btn-cta w-full !py-4 text-[0.72rem]"
         data-idle={connected ? undefined : ""}
-        disabled={connected ? !ready || !quote || busy : !mounted}
+        disabled={connected ? !ready || !quote || busy || insufficientBalance : !mounted}
         onClick={connected ? execute : () => setOpenConnectModal(true)}
       >
         {label}

@@ -32,6 +32,7 @@ export type QuoteArgs = {
   baselines?: boolean;
   simulation?: boolean;
   tokenData?: boolean;
+  incognito?: boolean; // private-mode swap
 };
 
 export function fetchQuote(args: QuoteArgs, signal?: AbortSignal): Promise<QuoteResponse> {
@@ -51,6 +52,7 @@ export function fetchQuote(args: QuoteArgs, signal?: AbortSignal): Promise<Quote
   if (args.maxHops != null) p.maxHops = args.maxHops;
   if (args.patchers != null) p.patchers = args.patchers;
   if (args.baselines != null) p.baselines = args.baselines;
+  if (args.incognito) p.incognito = true;
   return gateway<QuoteResponse>("q", p, signal);
 }
 
