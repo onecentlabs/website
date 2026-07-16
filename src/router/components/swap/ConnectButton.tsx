@@ -21,8 +21,9 @@ export function ConnectButton() {
 
   if (!isConnected || !address) {
     return (
-      <button onClick={() => setOpenConnectModal(true)} className="pixel-btn min-w-[7.5rem]">
-        Connect Wallet
+      <button onClick={() => setOpenConnectModal(true)} className="pixel-btn min-w-0 sm:min-w-[7.5rem]">
+        <span className="sm:hidden">Connect</span>
+        <span className="hidden sm:inline">Connect Wallet</span>
       </button>
     );
   }

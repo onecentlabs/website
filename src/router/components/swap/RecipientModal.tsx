@@ -88,7 +88,7 @@ export function RecipientModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/55 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="panel w-full max-w-md max-h-[82vh] flex flex-col overflow-hidden"
+        className="panel w-full max-w-md max-h-[85dvh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}

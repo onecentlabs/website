@@ -18,13 +18,13 @@ export function Navbar({
             {brand ?? site.name}
           </span>
         </Link>
-        <nav className="flex items-center gap-3 sm:gap-4">
+        <nav className="flex items-center gap-2 sm:gap-4">
           {actions ?? (
             <>
-              <Link href="/docs" className="pixel-btn pixel-btn-ghost min-w-[7.5rem]">
+              <Link href="/docs" className="pixel-btn pixel-btn-ghost min-w-0 sm:min-w-[7.5rem]">
                 Docs
               </Link>
-              <Link href="/router" className="pixel-btn min-w-[7.5rem]">
+              <Link href="/router" className="pixel-btn min-w-0 sm:min-w-[7.5rem]">
                 Router
               </Link>
             </>

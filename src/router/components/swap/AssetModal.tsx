@@ -125,7 +125,7 @@ export function AssetModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/55 backdrop-blur-sm" onClick={onClose}>
-      <div className="panel w-full max-w-md max-h-[78vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="panel w-full max-w-md max-h-[80dvh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* header */}
         <div className="flex items-center justify-between px-5 py-4 border-b hairline">
           <span className="text-[15px] font-semibold tracking-tight">Select a token</span>

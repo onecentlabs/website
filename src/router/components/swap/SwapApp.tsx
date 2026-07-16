@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useBalance, useGasPrice } from "wagmi";
 import { formatUnits } from "viem";
 import { useQuery } from "@tanstack/react-query";
@@ -88,6 +88,21 @@ export function SwapApp() {
 
   // Incognito / private mode — reskins the widget and flags the quote as private.
   const [incognito, setIncognito] = useState(false);
+  // Reskin the whole router page (bg, grid, glow) violet while private is on.
+  useEffect(() => {
+    const page = document.querySelector(".app-router");
+    page?.classList.toggle("incognito", incognito);
+    return () => page?.classList.remove("incognito");
+  }, [incognito]);
+
+  // Transient "coming soon" note when a not-yet-live section (Yields/RWAs) is tapped.
+  const [soon, setSoon] = useState<string | null>(null);
+  const soonTimer = useRef<number | undefined>(undefined);
+  function showSoon(name: string) {
+    setSoon(name);
+    window.clearTimeout(soonTimer.current);
+    soonTimer.current = window.setTimeout(() => setSoon(null), 2000);
+  }
 
   // Optional receiver: send the swap output to an address other than the sender.
   // Validated + normalized against the OUTPUT chain's address family (EVM today).
@@ -301,15 +316,28 @@ export function SwapApp() {
 
   return (
     <div className="w-full">
-      {/* ── swap widget ── */}
-      <div className={`swap-card panel p-4 sm:p-5 space-y-3${incognito ? " incognito" : ""}`}>
-        {/* header */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="dot" aria-hidden />
-            <h2 className="text-[22px] tracking-tight">{incognito ? "Private Trade" : "Trade"}</h2>
+      {/* ── section rail + swap widget ── */}
+      <div className="flex items-start justify-center gap-2.5 sm:gap-3">
+        <SectionRail active="trade" onSoon={(name) => showSoon(name)} />
+        <div className="flex-1 min-w-0">
+        {/* coming-soon toast (Yields / RWAs) — above the widget */}
+        {soon && (
+          <div className="mb-2 flex justify-center">
+            <span className="rounded-full border border-line-2 bg-elev px-3 py-1 text-[12px] text-muted">
+              {soon} — coming soon
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
+        )}
+        <div className={`swap-card panel p-4 sm:p-5 space-y-3${incognito ? " incognito" : ""}`}>
+        {/* header */}
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <span className="dot shrink-0" aria-hidden />
+            <h2 className="text-lg sm:text-[22px] tracking-tight truncate">
+              {incognito && <span className="hidden sm:inline">Private </span>}Trade
+            </h2>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <IncognitoToggle on={incognito} onToggle={() => setIncognito((v) => !v)} />
             <SettingsPanel settings={settings} onChange={setSettings} />
           </div>
@@ -344,9 +372,18 @@ export function SwapApp() {
             <div className="mt-1.5 flex items-center justify-between gap-2">
               <span className="text-[16px] text-ink/60 addr truncate">≈ {fmtUsd(inUsd ?? 0)}</span>
               {hasInBal && effTokenIn && (
-                <span className="text-[16px] text-ink/60 addr truncate">
+                <button
+                  type="button"
+                  onClick={() => applyPct(100)}
+                  title="Use max balance"
+                  className="group flex items-center gap-1.5 text-[16px] text-ink/60 addr truncate transition-colors hover:text-accent"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-70 group-hover:opacity-100" aria-hidden>
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <path d="M2 10h20" />
+                  </svg>
                   {fmtAmount(fromBaseUnits(String(inBalValue), effTokenIn.decimals))} {effTokenIn.symbol}
-                </span>
+                </button>
               )}
             </div>
             {/* balance slider — optional (Settings › Amount slider); snaps to 0/25/50/75/MAX */}
@@ -437,7 +474,7 @@ export function SwapApp() {
 
         {/* review — a single terminal-style summary row binds inputs to the action */}
         {!crossChain && !sameToken && (
-          <div className="grid grid-cols-[1.4fr_0.8fr_1.2fr] divide-x divide-line border-t border-line pt-4">
+          <div className="grid grid-cols-3 divide-x divide-line border-t border-line pt-4">
             <Stat
               label="Network Cost"
               value={gasUsd != null ? fmtUsd(gasUsd) : loading ? "…" : "—"}
@@ -461,19 +498,21 @@ export function SwapApp() {
           {!crossChain && !sameToken && !error && simFailed && (
             <div className="flex items-center gap-2 px-1 text-[13px] text-danger"><span aria-hidden>⚠</span> Simulation failed — amount shown is a routing estimate.</div>
           )}
-          <ExecuteButton chain={chainIn} inputToken={effTokenIn} amount={debouncedAmount} quote={quote} ready={ready} insufficientBalance={insufficientBalance} />
+          <ExecuteButton chain={chainIn} inputToken={effTokenIn} outputToken={effTokenOut} amount={debouncedAmount} quote={quote} ready={ready} insufficientBalance={insufficientBalance} />
         </div>
-      </div>
+        </div>
 
-      {/* attribution — sits below the card */}
-      <div className="mt-3 text-center text-[12px] text-faint">
-        {incognito ? (
-          <span className="inline-flex items-center gap-1.5">
-            <IncognitoGlyph size={13} /> Private Trade · <span className="text-muted">OneCent Router</span>
-          </span>
-        ) : (
-          <>Powered by <span className="text-muted">OneCent Router</span></>
-        )}
+        {/* attribution — sits below the card, centered under it */}
+        <div className="mt-3 text-center text-[12px] text-faint">
+          {incognito ? (
+            <span className="inline-flex items-center gap-1.5">
+              <IncognitoGlyph size={13} /> Private Trade · <span className="text-muted">OneCent Router</span>
+            </span>
+          ) : (
+            <>Powered by <span className="text-muted">OneCent Router</span></>
+          )}
+        </div>
+        </div>
       </div>
 
       {modal && (
@@ -505,6 +544,80 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="flex flex-col items-center text-center gap-1 min-w-0 px-2">
       <span className="field-label">{label}</span>
       <span className="kpi-num text-[0.95rem] text-ink/70 truncate max-w-full">{value}</span>
+    </div>
+  );
+}
+
+/* ── Section rail — icon nav attached to the widget's left edge ── */
+
+/** Bidirectional swap arrows — Trade. */
+function TradeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M7 8h11M14 4l4 4-4 4" />
+      <path d="M17 16H6M10 12l-4 4 4 4" />
+    </svg>
+  );
+}
+
+/** Upward trend line — Yields / APY (growth). */
+function YieldsIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M17 7h4v4" />
+    </svg>
+  );
+}
+
+/** Bank / columned building — Real-World Assets. */
+function RwaIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 21h18" />
+      <path d="M12 3l9 5H3z" />
+      <path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8" />
+    </svg>
+  );
+}
+
+const SECTIONS = [
+  { id: "trade", label: "Trade", Icon: TradeIcon },
+  { id: "yields", label: "Yields", Icon: YieldsIcon },
+  { id: "rwas", label: "RWAs", Icon: RwaIcon },
+] as const;
+
+/** Compact vertical icon rail beside the widget. Icon-only; the name flies out
+ *  on hover. The active section is highlighted; not-yet-live ones raise a
+ *  "coming soon" note. */
+function SectionRail({ active, onSoon }: { active: string; onSoon: (name: string) => void }) {
+  return (
+    <div className="mt-[4rem] sm:mt-[4.25rem] flex shrink-0 flex-col gap-1 rounded-[calc(var(--r)+2px)] border border-line-2 bg-bg-2 p-1.5 shadow-[var(--shadow-sm)]">
+      {SECTIONS.map((s) => {
+        const isActive = s.id === active;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => !isActive && onSoon(s.label)}
+            aria-label={s.label}
+            aria-current={isActive ? "page" : undefined}
+            title={s.label}
+            className={`group relative grid h-11 w-11 place-items-center rounded-full transition-colors ${
+              isActive
+                ? "bg-accent/15 text-accent"
+                : "text-muted hover:text-ink hover:bg-white/[0.05]"
+            }`}
+          >
+            <s.Icon />
+            {/* hover label — flies left on desktop, right on mobile (avoids clipping) */}
+            <span className="pointer-events-none absolute top-1/2 z-30 -translate-y-1/2 whitespace-nowrap rounded-md border border-line-2 bg-elev px-2 py-1 text-[11px] font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 right-full mr-2.5 max-sm:right-auto max-sm:left-full max-sm:mr-0 max-sm:ml-2.5">
+              {s.label}
+              {!isActive && <span className="ml-1 text-faint">· Soon</span>}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

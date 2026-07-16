@@ -29,14 +29,14 @@ export default function RouterLayout({ children }: { children: React.ReactNode }
         <Navbar
           actions={
             <>
-              <Link href="/docs" className="pixel-btn pixel-btn-ghost min-w-[7.5rem]">
+              <Link href="/docs" className="pixel-btn pixel-btn-ghost min-w-0 sm:min-w-[7.5rem]">
                 Docs
               </Link>
               <ConnectButton />
             </>
           }
         />
-        <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
+        <main className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden">{children}</main>
       </Web3Provider>
     </div>
   );
