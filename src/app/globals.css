@@ -181,6 +181,16 @@ a.link:hover { border-color: var(--accent); }
   fill: #ff4d4d;
   stroke: #ff4d4d;
 }
+/* Private mode: the cursor turns violet to match the private theme (green would
+   clash on the violet page). Hover still goes red as the interactive cue. */
+html:has(.app-router.incognito) .cursor-pixel .cp-fg {
+  fill: #b9a3ff;
+  stroke: #b9a3ff;
+}
+html:has(.app-router.incognito) .cursor-pixel[data-hover="true"] .cp-fg {
+  fill: #d9ccff;
+  stroke: #d9ccff;
+}
 
 /* ---------- Fluid page container ----------
    Centered, fluid up to a cap, with gutters that scale with the viewport
@@ -499,6 +509,36 @@ a.link:hover { border-color: var(--accent); }
     0 0 60px -18px rgba(167, 139, 255, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* Private mode reskins the WHOLE router page violet (SwapApp toggles .incognito
+   on the .app-router wrapper). Page bg goes black→blackish-purple, grid + accent
+   turn violet, so nav, glow and everything on the page read as private. */
+.app-router {
+  transition: background-color 0.3s ease;
+}
+.app-router.incognito {
+  --bg: #0a0714;      /* page (blackish purple) */
+  --bg-2: #140d20;
+  --bg-3: #1a1230;
+  --elev: #271b3f;
+  --line: #241a38;
+  --line-2: #37294f;
+  --accent: #a78bff;
+  --accent-ink: #150a26;
+  --grid-line: rgba(167, 139, 255, 0.04);
+}
+html:has(.app-router.incognito),
+html:has(.app-router.incognito) body {
+  background: #0a0714;
+}
+.app-router.incognito .hero-glow {
+  background: radial-gradient(
+    closest-side,
+    rgba(167, 139, 255, 0.16),
+    rgba(167, 139, 255, 0.05) 55%,
+    transparent 78%
+  );
 }
 
 /* ---------- Typewriter ---------- */

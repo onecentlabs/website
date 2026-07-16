@@ -88,6 +88,12 @@ export function SwapApp() {
 
   // Incognito / private mode — reskins the widget and flags the quote as private.
   const [incognito, setIncognito] = useState(false);
+  // Reskin the whole router page (bg, grid, glow) violet while private is on.
+  useEffect(() => {
+    const page = document.querySelector(".app-router");
+    page?.classList.toggle("incognito", incognito);
+    return () => page?.classList.remove("incognito");
+  }, [incognito]);
 
   // Optional receiver: send the swap output to an address other than the sender.
   // Validated + normalized against the OUTPUT chain's address family (EVM today).
