@@ -1,119 +1,107 @@
 # OneCent Labs — Website
 
-Marketing site for OneCent Labs. 
-Next.js 16 (App Router), Tailwind CSS v4, TypeScript.
+The OneCent Labs marketing site **and** the OneCent Router trading app, in one Next.js project.
 
-## Getting started
+- **Landing** (`/`) — what OneCent Labs is.
+- **Router** (`/router`) — a swap/trade widget that finds the best on-chain route across venues and executes it in one transaction.
+
+Built with **Next.js 16** (App Router), **React 19**, **Tailwind CSS v4**, **TypeScript**, **wagmi/viem**, and **Sequence** for wallets.
+
+---
+
+## Quick start
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
-npm run build        # production build
-npm run lint         # ESLint
+cp .env.example .env.local   # then fill in the values (see below)
+npm run dev                  # http://localhost:3000
 ```
 
-## Project layout
+Requires Node 20+.
+
+| Script          | What it does               |
+| --------------- | -------------------------- |
+| `npm run dev`   | Start the dev server       |
+| `npm run build` | Production build           |
+| `npm run start` | Serve the production build |
+| `npm run lint`  | ESLint                     |
+
+---
+
+## Environment
+
+Copy `.env.example` to `.env.local` and fill it in. `.env.local` is gitignored — **never commit real secrets**.
+
+**Server-only** (no `NEXT_PUBLIC_` prefix — never shipped to the browser):
+
+| Variable           | Purpose                                                 |
+| ------------------ | ------------------------------------------------------- |
+| `ONECENT_API_BASE` | Base URL of the core API (`/quote`, `/price`, `/usd`).  |
+| `ONECENT_API_KEY`  | API key for the core API. Injected server-side only.    |
+| `REGISTRY_BASE`    | Public token registry (token lists + logos).            |
+
+**Client-visible** (safe to expose):
+
+| Variable                                  | Purpose                                         |
+| ----------------------------------------- | ----------------------------------------------- |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`    | WalletConnect project id (optional).            |
+| `NEXT_PUBLIC_SEQUENCE_PROJECT_ACCESS_KEY` | Sequence WaaS access key (from sequence.build). |
+| `NEXT_PUBLIC_SEQUENCE_WAAS_CONFIG_KEY`    | Sequence WaaS config key.                       |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`            | Google social login (optional; blank hides it). |
+
+---
+
+## How it works
+
+The browser never talks to the core API or the token registry directly — it calls
+same-origin routes under `/api/*`, and the server injects the upstream host + API
+key. The key and the real endpoints never reach the client bundle or the Network panel.
+
+```
+browser ──▶ /api/g     ──▶ core API (/quote, /price, /usd)   [key-gated, server-side]
+browser ──▶ /api/logo  ──▶ token/chain logo hosts            [SSRF-guarded, streamed]
+```
+
+Before sending a trade, the client pins the router contract to a known address and
+refuses to approve or send funds anywhere else, so a bad quote can't redirect value.
+
+---
+
+## Project structure
 
 ```
 src/
-├── app/                          Next.js App Router
-│   ├── api/og/route.tsx          Edge OG image generator
-│   ├── globals.css               Design tokens + pixel components
-│   ├── icon.svg                  Favicon (pixel cent)
-│   ├── layout.tsx                Root layout: fonts, metadata, JSON-LD
-│   ├── page.tsx                  Home (composes sections)
-│   ├── robots.ts                 robots.txt route
-│   └── sitemap.ts                sitemap.xml route
-├── components/
-│   ├── effects/                  Visual effects (cursor, particles)
-│   │   └── CursorTrail.tsx
-│   ├── layout/                   Site chrome
-│   │   ├── Footer.tsx
-│   │   └── Navbar.tsx
-│   ├── sections/                 Page-level composable sections
-│   │   ├── Cta.tsx
-│   │   ├── Flow.tsx
-│   │   ├── Hero.tsx
-│   │   ├── KpiStrip.tsx
-│   │   └── Pillars.tsx
-│   └── ui/                       Reusable primitives
-│       ├── Counter.tsx           Count-up animation
-│       ├── Logo.tsx              Pixel cent mark
-│       └── Typewriter.tsx        Rotating typed text
-└── lib/
-    ├── seo.ts                    buildMetadata helper for sub-pages
-    └── site.ts                   Brand config (name, urls, keywords)
+├── app/
+│   ├── (site)/               Marketing site (landing, docs)
+│   ├── (router)/             Router trading app (/router)
+│   ├── api/
+│   │   ├── g/route.ts        Same-origin proxy → core API (key-gated)
+│   │   ├── logo/route.ts     Logo image proxy (SSRF-guarded)
+│   │   └── og/route.tsx      OpenGraph image
+│   ├── layout.tsx            Root layout (fonts, custom cursor)
+│   └── globals.css           Design tokens + shared component styles
+├── components/               Site chrome + landing sections
+├── lib/                      Shared site config
+└── router/                   Everything scoped to the Router app
+    ├── components/           Swap widget, modals, wallet providers
+    ├── hooks/                Token registry, balances, quote cycle
+    └── lib/                  Chains, API client, formatting, address utils
 ```
 
-## Design system
+Path aliases: `@/*` → `src/*`, `@r/*` → `src/router/*`.
 
-Tokens live as CSS variables in `globals.css` and are exposed to Tailwind via `@theme inline` (Tailwind v4). Use them as `bg-bg`, `text-ink`, `text-accent`, `border-line`, etc.
+---
 
-| Token            | Value      | Use                              |
-| ---------------- | ---------- | -------------------------------- |
-| `--bg`           | `#0a0b0d`  | Page background                  |
-| `--bg-2/-3`      | dark       | Cards, code blocks               |
-| `--ink`          | `#f4f5f7`  | Primary text                     |
-| `--muted`        | `#8a8f99`  | Secondary text                   |
-| `--line`         | `#1f232b`  | Borders, hairlines               |
-| `--accent`       | `#b6ff3c`  | Primary accent (lime)            |
-| `--accent-2`     | `#43e7ff`  | Secondary accent (cyan)          |
-| `--warn`         | `#ff5d8f`  | Cursor hover state               |
+## Tech stack
 
-Custom utility classes (in `globals.css`):
+- **Next.js 16** (App Router) · **React 19** · **TypeScript**
+- **Tailwind CSS v4** (design tokens as CSS variables, exposed via `@theme inline`)
+- **wagmi** + **viem** for chain interaction
+- **Sequence** (`@0xsequence/connect`) for wallet connection, including embedded (WaaS) wallets
 
-- `.pixel-btn`, `.pixel-btn-ghost` — primary buttons
-- `.pixel-tag` — eyebrow labels
-- `.dot`, `.hairline`, `.bg-grid` — primitives
-- `.kpi-num` — tabular mono digits (Counter)
-- `.tw-cursor` — typewriter blink (Typewriter)
-- `.cursor-pixel` — custom cursor element (CursorTrail)
-
-## Adding pages
-
-Drop a folder under `src/app/<route>/page.tsx`. Use `buildMetadata()` from `@/lib/seo` for SEO, and add the path to `sitemap.ts`.
-
-```tsx
-// src/app/docs/page.tsx
-import type { Metadata } from "next";
-import { buildMetadata } from "@/lib/seo";
-
-export const metadata: Metadata = buildMetadata({
-  title: "Docs",
-  description: "API reference and guides.",
-  path: "/docs",
-});
-
-export default function DocsPage() { /* ... */ }
-```
-
-## Adding a new section to home
-
-Create `src/components/sections/MySection.tsx`, then drop it into `src/app/page.tsx`:
-
-```tsx
-import { MySection } from "@/components/sections/MySection";
-// ...
-<Hero />
-<MySection />
-```
-
-## Roadmap (scaffold-ready)
-
-- `src/content/` — MDX blog/docs (add `next-mdx-remote` or `contentlayer`)
-- `src/app/(docs)/` — route group for docs with shared layout
-- `src/components/ui/` — additional primitives (PixelCard, Section wrapper, etc) when reused 2+ times
-- `src/lib/analytics.ts` — page-view + event tracking
-- Storybook for `components/ui/` primitives
-
-## Conventions
-
-- **One component per file**, named after the file
-- **Section components** own their data; promote to `lib/` only when shared
-- **No inline `style` in components** unless dynamic; everything else via Tailwind or `globals.css`
-- **`use client`** only when component needs DOM events, refs, or state
-- **`currentColor`** for icon SVGs so they inherit text color
+---
 
 ## Deployment
 
-Built for Vercel. The `/api/og` route uses the Edge runtime; everything else is statically rendered.
+Deploys as a standard Next.js app (e.g. Vercel). Set the environment variables above
+in your host's project settings before building.
