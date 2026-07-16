@@ -47,14 +47,18 @@ function upstreamError(status: number): string {
 }
 
 /**
- * Quote big integers (amountOut / simulatedAmountOut come back as bare JSON
- * numbers in wei, which lose precision past 2^53 once JSON.parse runs). We
- * wrap them in quotes at the text level so the client parses exact strings.
- * Path edge amounts are already quoted upstream, so the lookbehind-free regex
- * (digits immediately after the colon, no quote) never touches them.
+ * Quote big integers (amountOut / minAmountOut / netAmountOut / simulatedAmountOut
+ * come back as bare JSON numbers in wei, which lose precision past 2^53 once
+ * JSON.parse runs). We wrap them in quotes at the text level so the client parses
+ * exact strings. Path edge amounts are already quoted upstream, so the
+ * lookbehind-free regex (digits immediately after the colon, no quote) never
+ * touches them.
  */
 function quoteBigInts(text: string): string {
-  return text.replace(/"(amountOut|simulatedAmountOut)":\s*(-?\d+)(?=\s*[,}])/g, '"$1":"$2"');
+  return text.replace(
+    /"(amountOut|minAmountOut|netAmountOut|simulatedAmountOut)":\s*(-?\d+)(?=\s*[,}])/g,
+    '"$1":"$2"',
+  );
 }
 
 async function relayCore(

@@ -139,7 +139,7 @@ export function ExecuteButton({
   return (
     <div className="space-y-2">
       <button
-        className="pixel-btn btn-cta w-full !py-5 text-[0.72rem]"
+        className="pixel-btn btn-cta w-full !py-4 text-[0.72rem]"
         data-idle={connected ? undefined : ""}
         disabled={connected ? !ready || !quote || busy : !mounted}
         onClick={connected ? execute : () => setOpenConnectModal(true)}

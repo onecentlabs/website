@@ -134,16 +134,38 @@ export function SwapApp() {
   const inBalValue = inBal.data?.value ?? null;
   const hasInBal = inBalValue != null && inBalValue > 0n;
 
+  // Slider position (0–100) derived from the entered amount vs balance, so the
+  // thumb stays in sync whether the user drags it or types the amount directly.
+  const pctOfBalance = (() => {
+    if (inBalValue == null || inBalValue === 0n || !effTokenIn) return 0;
+    const n = parseFloat(amount);
+    if (!isFinite(n) || n <= 0) return 0;
+    const bal = Number(fromBaseUnits(String(inBalValue), effTokenIn.decimals));
+    return bal > 0 ? Math.max(0, Math.min(100, (n / bal) * 100)) : 0;
+  })();
+
   function applyPct(pct: number) {
     if (inBalValue == null || !effTokenIn) return;
-    let amt = (inBalValue * BigInt(pct)) / 100n;
+    // Basis-point precision so fractional slider positions (e.g. 37.5%) work.
+    const bps = BigInt(Math.round(Math.max(0, Math.min(100, pct)) * 100));
+    let amt = (inBalValue * bps) / 10_000n;
     // Native MAX: keep a little aside for gas so the swap tx can still pay for
     // itself. Lower percentages already leave a remainder, so only adjust 100%.
-    if (pct === 100 && isNativeAddress(effTokenIn.address)) {
+    if (pct >= 100 && isNativeAddress(effTokenIn.address)) {
       const buffer = nativeGasBufferWei(chainIn.chainId);
       amt = amt > buffer ? amt - buffer : 0n;
     }
     setAmount(formatUnits(amt, effTokenIn.decimals));
+  }
+
+  // Magnetic snap: drag is smooth, but within SNAP_PCT of a breakpoint the value
+  // jumps to it so the common 25/50/75/MAX stops are easy to hit exactly.
+  const SNAP_PCT = 3;
+  function snapPct(v: number): number {
+    for (const bp of [0, 25, 50, 75, 100]) {
+      if (Math.abs(v - bp) <= SNAP_PCT) return bp;
+    }
+    return v;
   }
 
   const amountNum = parseFloat(debouncedAmount);
@@ -228,9 +250,15 @@ export function SwapApp() {
   const inUsd = amountValid && usdIn.data != null ? amountNum * usdIn.data : null;
   const outUsd = outHuman != null && usdOut.data != null ? outHuman * usdOut.data : null;
 
-  // null = Auto: /quote picks the slippage, so we can't compute a min client-side.
   const slipBps = settings.slippageBps;
-  const minReceived = slipBps != null && outHuman != null ? outHuman * (1 - slipBps / 10_000) : null;
+  // Prefer core's guaranteed minimum from the quote (minAmountOut, slippage-aware
+  // incl. Auto). Fall back to the client estimate only when core omits it.
+  const minReceived = useMemo(() => {
+    if (quoteMatchesInput && quote?.minAmountOut != null && effTokenOut) {
+      return fromBaseUnits(quote.minAmountOut, effTokenOut.decimals);
+    }
+    return slipBps != null && outHuman != null ? outHuman * (1 - slipBps / 10_000) : null;
+  }, [quoteMatchesInput, quote?.minAmountOut, effTokenOut, slipBps, outHuman]);
 
   const gasUnits =
     quoteMatchesInput && quote?.computationUnits != null ? Number(quote.computationUnits) : null;
@@ -281,7 +309,7 @@ export function SwapApp() {
             <div className="flex items-center justify-between mb-2.5 gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="field-label">From</span>
-                {effTokenIn && !isNativeAddress(effTokenIn.address) && <CopyAddress address={effTokenIn.address} className="font-mono" />}
+                {effTokenIn && <CopyAddress address={effTokenIn.address} className="font-mono" />}
               </div>
               <ChainSelect value={chainIn} onClick={() => setModal({ side: "in", chainEditable: true })} />
             </div>
@@ -310,18 +338,33 @@ export function SwapApp() {
                 </span>
               )}
             </div>
-            <div className="mt-3 flex gap-2">
-              {[25, 50, 75, 100].map((pct) => (
-                <button
-                  key={pct}
-                  type="button"
-                  disabled={!hasInBal}
-                  onClick={() => applyPct(pct)}
-                  className="flex-1 py-1.5 text-[15px] font-mono rounded-[var(--r-sm)] border border-line-2 bg-elev text-ink/80 hover:border-accent hover:text-accent hover:bg-accent/10 active:scale-[0.95] transition-all disabled:opacity-45 disabled:pointer-events-none"
-                >
-                  {pct === 100 ? "MAX" : `${pct}%`}
-                </button>
-              ))}
+            {/* balance slider — snaps to 0/25/50/75/MAX; drag or click a tick */}
+            <div className="mt-4 px-0.5">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={0.5}
+                value={pctOfBalance}
+                disabled={!hasInBal}
+                onChange={(e) => applyPct(snapPct(Number(e.target.value)))}
+                aria-label="Amount as percent of balance"
+                className="bal-slider w-full"
+                style={{ "--pct": `${pctOfBalance}%` } as React.CSSProperties}
+              />
+              <div className="mt-1.5 flex justify-between text-[13px] text-faint select-none">
+                {[0, 25, 50, 75, 100].map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={!hasInBal}
+                    onClick={() => applyPct(p)}
+                    className="font-mono hover:text-accent transition-colors disabled:pointer-events-none"
+                  >
+                    {p === 100 ? "MAX" : `${p}%`}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -343,7 +386,7 @@ export function SwapApp() {
             <div className="flex items-center justify-between mb-2.5 gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="field-label">To</span>
-                {effTokenOut && !isNativeAddress(effTokenOut.address) && <CopyAddress address={effTokenOut.address} className="font-mono" />}
+                {effTokenOut && <CopyAddress address={effTokenOut.address} className="font-mono" />}
               </div>
               <ChainSelect value={chainOut} onClick={() => setModal({ side: "out", chainEditable: true })} />
             </div>
@@ -385,13 +428,7 @@ export function SwapApp() {
           <div className="grid grid-cols-[1.4fr_0.8fr_1.2fr] divide-x divide-line border-t border-line pt-4">
             <Stat
               label="Network Cost"
-              value={
-                gasNative != null
-                  ? `${fmtAmount(gasNative)} ${chainIn.nativeSymbol}${gasUsd != null ? ` · ${fmtUsd(gasUsd)}` : ""}`
-                  : loading
-                    ? "…"
-                    : "—"
-              }
+              value={gasUsd != null ? fmtUsd(gasUsd) : loading ? "…" : "—"}
             />
             <Stat label="Max Slippage" value={slipBps == null ? "Auto" : `${slipBps / 100}%`} />
             <Stat label="Min Received" value={minReceived != null && effTokenOut ? `${fmtAmount(minReceived)} ${effTokenOut.symbol}` : loading ? "…" : "—"} />
