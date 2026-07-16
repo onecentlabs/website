@@ -176,9 +176,10 @@ a.link:hover { border-color: var(--accent); }
   stroke-linejoin: miter;
   stroke-linecap: round;
 }
-.cursor-pixel[data-hover="true"] svg {
-  transform: rotate(8deg) scale(1.15);
-  transform-origin: 0.5px 0.5px;
+/* Hover: recolor the arrow red (no size change) to signal an interactive target. */
+.cursor-pixel[data-hover="true"] .cp-fg {
+  fill: #ff4d4d;
+  stroke: #ff4d4d;
 }
 
 /* ---------- Fluid page container ----------
@@ -469,6 +470,35 @@ a.link:hover { border-color: var(--accent); }
 .swap-card .addr {
   font-size: 1.15rem;
   letter-spacing: 0.01em;
+}
+
+/* Incognito / private mode — reskins the card with a dark indigo "privacy"
+   palette + violet accent, echoing browser private-browsing UIs. Overriding the
+   tokens on the card cascades the violet accent to every control inside it
+   (buttons, slider, dot, focus rings, the toggle knob). */
+.swap-card.incognito {
+  --bg-2: #17141f;    /* card */
+  --bg-3: #1e1a2b;    /* input / inset */
+  --elev: #2a2440;    /* pills */
+  --line: #2b2540;
+  --line-2: #3a3358;
+  --accent: #a78bff;
+  --accent-ink: #150a26;
+  /* Minimal privacy motif: a faint tiled incognito-glasses watermark sits as a
+     background layer (below all content), with a soft top glow over the card. */
+  background:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='30'%20height='30'%20viewBox='0%200%2024%2024'%3E%3Cdefs%3E%3Cfilter%20id='b'%20x='-50%25'%20y='-50%25'%20width='200%25'%20height='200%25'%3E%3CfeGaussianBlur%20stdDeviation='1.3'/%3E%3C/filter%3E%3C/defs%3E%3Cg%20filter='url(%23b)'%20fill='none'%20stroke='%23a78bff'%20stroke-opacity='0.24'%20stroke-width='1.5'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M4%2012h16M8%208l-1%204M16%208l1%204'/%3E%3Ccircle%20cx='7.5'%20cy='15'%20r='2.5'/%3E%3Ccircle%20cx='16.5'%20cy='15'%20r='2.5'/%3E%3Cpath%20d='M10%2015c.7-.6%201.3-.6%202%200'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(120% 90% at 50% -20%, rgba(150, 120, 255, 0.1), transparent 55%),
+    var(--bg-2);
+  background-size: 46px 46px, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat;
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line-2));
+  box-shadow:
+    0 24px 60px -28px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(167, 139, 255, 0.18),
+    0 0 60px -18px rgba(167, 139, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 /* ---------- Typewriter ---------- */

@@ -46,4 +46,5 @@ export type UsdResponse = {
 
 export type QuoteSettings = {
   slippageBps: number | null; // null → backend default (300)
+  amountSlider?: boolean; // show the balance % slider in the From field (off by default)
 };

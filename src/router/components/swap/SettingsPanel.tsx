@@ -116,6 +116,34 @@ export function SettingsPanel({
                   Your trade reverts if the price moves against you by more than this.
                 </p>
               </div>
+
+              {/* Amount slider toggle */}
+              <div className="mt-6 pt-6 border-t hairline">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="field-label !text-[0.78rem] block">Amount slider</span>
+                    <p className="text-xs text-muted leading-relaxed mt-1">
+                      Show a balance % slider in the From field.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!settings.amountSlider}
+                    aria-label="Amount slider"
+                    onClick={() => set({ amountSlider: !settings.amountSlider })}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
+                      settings.amountSlider ? "bg-accent/25 border-accent" : "bg-elev border-line-2"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex h-4 w-4 rounded-full transition-transform duration-200 ${
+                        settings.amountSlider ? "translate-x-[1.4rem] bg-accent" : "translate-x-[0.2rem] bg-muted"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
