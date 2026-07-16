@@ -453,6 +453,11 @@ export function SwapApp() {
         </div>
       </div>
 
+      {/* attribution — sits below the card */}
+      <div className="mt-3 text-center text-[12px] text-faint">
+        Powered by <span className="text-muted">OneCent Router</span>
+      </div>
+
       {modal && (
         <AssetModal
           chain={modal.side === "in" ? chainIn : chainOut}
