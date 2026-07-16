@@ -40,17 +40,18 @@
   --grid-line: rgba(255, 255, 255, 0.013);
   /* One consistent radius scale — outer container is the largest step, inner
      surfaces/controls a proportional notch tighter (never fully round). */
-  --r: 12px;     /* outer card */
-  --r-sm: 8px;   /* inner surfaces + controls */
+  --r: 20px;     /* outer card */
+  --r-sm: 14px;  /* inner surfaces + controls */
   --r-pill: 999px;
   --shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.7);
   --shadow-sm: 0 4px 14px -8px rgba(0, 0, 0, 0.6);
-  /* Card lift: deep drop shadow + accent glow so the swap card reads as the
-     brightest, focal element on the page. */
+  /* Card lift: a refined, mostly-neutral drop shadow with just a whisper of
+     accent glow — enough to float the card without looking heavy or "gamer". */
   --shadow-card:
-    0 30px 70px -24px rgba(0, 0, 0, 0.85),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 0 90px -14px rgba(182, 255, 60, 0.2);
+    0 24px 60px -28px rgba(0, 0, 0, 0.8),
+    0 2px 10px -6px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 60px -22px rgba(182, 255, 60, 0.12);
   --glow-accent: 0 0 24px -6px rgba(182, 255, 60, 0.55);
 }
 
@@ -190,6 +191,39 @@ a.link:hover { border-color: var(--accent); }
   padding-inline: clamp(1.25rem, 5vw, 4rem);
 }
 
+/* Nav container — px/vw only (no rem) so the bar renders identically across the
+   two apps, which run different root font-sizes (landing 110% vs router 100%). */
+.nav-shell {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(20px, 5vw, 64px);
+}
+
+/* Brand word swap — "Router" lifts and fades out while "Labs" rises in on nav
+   hover, cueing the link back to the OneCent Labs home. Both words stack in one
+   left-aligned grid cell, so nothing reflows and the type never distorts. */
+.brand-swap {
+  display: inline-grid;
+}
+.brand-swap > span {
+  grid-area: 1 / 1;
+  text-align: left;
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.3s ease;
+}
+.brand-swap .swap-in {
+  transform: translateY(0.45em);
+  opacity: 0;
+}
+.group:hover .brand-swap .swap-out {
+  transform: translateY(-0.45em);
+  opacity: 0;
+}
+.group:hover .brand-swap .swap-in {
+  transform: translateY(0);
+  opacity: 1;
+}
+
 /* ---------- Nav links — accent underline slides in on hover ---------- */
 .nav-link { position: relative; }
 .nav-link::after {
@@ -241,26 +275,39 @@ a.link:hover { border-color: var(--accent); }
 /* Primary CTA — the brightest element on the page: top-lit gradient, inner
    highlight, accent glow, and a light sheen that sweeps across on hover. */
 .btn-cta:not(:disabled):not([data-idle]) {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 82%, var(--bg-2));
+  border-color: color-mix(in srgb, var(--accent) 82%, var(--bg-2));
   color: var(--accent-ink);
-  box-shadow: 0 0 18px -8px rgba(182, 255, 60, 0.5);
+  box-shadow: 0 0 10px -8px rgba(182, 255, 60, 0.35);
 }
+/* On hover the active CTA gains a light framing border (+ ring) so it clearly
+   reads as a pressable button, matching the other buttons' hover treatment. */
 .btn-cta:not(:disabled):not([data-idle]):hover {
-  background: color-mix(in srgb, var(--accent) 88%, #fff);
-  box-shadow: 0 0 24px -8px rgba(182, 255, 60, 0.65);
+  background: var(--accent);
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 16px -10px rgba(182, 255, 60, 0.5);
 }
 /* Disabled reads as a real, raised button (lighter than any input surface,
    with a border + top highlight) — not a hollow outline that mimics a field.
    [data-idle] = same look but still clickable (e.g. "Connect wallet to trade"). */
 .btn-cta:disabled,
-.btn-cta[data-idle],
-.btn-cta[data-idle]:hover {
+.btn-cta[data-idle] {
   background: linear-gradient(180deg, color-mix(in srgb, var(--elev) 88%, #fff 6%), var(--elev));
   border-color: var(--line-2);
   color: var(--muted);
   opacity: 1;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* idle CTA ("Connect wallet to trade") is still clickable — subtle neutral
+   hover: keep the raised gradient (override .pixel-btn's green fill), brighten
+   the border + text (no green fill or glow). */
+.btn-cta[data-idle]:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--elev) 78%, #fff 8%), var(--elev));
+  border-color: var(--ink);
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Swap-direction button — circular, ringed off the cards, spins + glows on hover. */
@@ -284,6 +331,43 @@ a.link:hover { border-color: var(--accent); }
   box-shadow: 0 0 0 5px var(--bg-2), 0 0 22px -4px rgba(182, 255, 60, 0.65);
 }
 .flip-btn:active { transform: rotate(180deg) scale(0.92); }
+
+/* ---------- Balance slider ---------- */
+/* Snaps to 0/25/50/75/100 of balance. Track is filled up to --pct with the
+   accent; the labels below double as clickable tick marks. */
+.bal-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(to right, var(--accent) var(--pct, 0%), var(--line-2) var(--pct, 0%));
+  outline: none;
+}
+/* No cursor override — inherits the app's custom (hidden) cursor so the native
+   pointer never shows on top of it. */
+.bal-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  border: 2px solid var(--bg-2);
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 6px -2px rgba(0, 0, 0, 0.6);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.bal-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  border: 2px solid var(--bg-2);
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 6px -2px rgba(0, 0, 0, 0.6);
+}
+.bal-slider::-moz-range-track { height: 6px; border-radius: var(--r-pill); background: transparent; }
+.bal-slider:hover::-webkit-slider-thumb { transform: scale(1.15); box-shadow: 0 0 0 1px var(--accent), 0 0 14px -2px rgba(182, 255, 60, 0.7); }
+.bal-slider:disabled { opacity: 0.4; }
 
 /* ---------- Chips / tags ---------- */
 /* Landing kicker — borderless pixel tag. */
@@ -366,6 +450,26 @@ a.link:hover { border-color: var(--accent); }
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
+/* Opt-in: From/To token address uses the VT323 pixel font (overrides .addr,
+   whose font-family declaration otherwise wins by cascade order). */
+.addr.font-mono {
+  font-family: var(--font-vt), ui-monospace, monospace;
+}
+
+/* Swap widget — every label, value and address inside the widget uses the VT323
+   pixel font, sized up so it reads clearly. Scoped to .swap-card so the modals
+   keep their own styling; the CTA keeps its own pixel (Press Start) button font. */
+.swap-card *:not(.btn-cta) {
+  font-family: var(--font-vt), ui-monospace, monospace !important;
+}
+.swap-card .field-label {
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+.swap-card .addr {
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+}
 
 /* ---------- Typewriter ---------- */
 .tw-cursor::after {
@@ -394,11 +498,11 @@ a.link:hover { border-color: var(--accent); }
   pointer-events: none;
   background: radial-gradient(
     closest-side,
-    rgba(182, 255, 60, 0.16),
-    rgba(182, 255, 60, 0.05) 55%,
+    rgba(182, 255, 60, 0.1),
+    rgba(182, 255, 60, 0.03) 55%,
     transparent 78%
   );
-  filter: blur(28px);
+  filter: blur(32px);
 }
 
 /* ---------- Router: panels ---------- */
@@ -406,11 +510,11 @@ a.link:hover { border-color: var(--accent); }
    top-lit gradient give the card real depth instead of a flat slab. */
 .panel {
   background:
-    radial-gradient(120% 90% at 50% -20%, rgba(150, 190, 255, 0.035), transparent 55%),
+    radial-gradient(120% 90% at 50% -20%, rgba(150, 190, 255, 0.03), transparent 55%),
     var(--bg-2);
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--line);
   border-radius: var(--r);
-  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   position: relative;
 }
 /* Inner regions read as SURFACES, not boxes — no border by default, just a
@@ -444,6 +548,16 @@ a.link:hover { border-color: var(--accent); }
   line-height: 1.05;
   width: 100%;
   caret-color: var(--accent);
+}
+
+/* Widget numerals + KPIs keep the VT323 pixel-mono (the original look) — only
+   the CTA drops to a clean sans so the button reads modern. */
+.app-router .btn-cta {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* ---------- Router: quote ring ---------- */

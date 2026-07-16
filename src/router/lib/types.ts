@@ -23,6 +23,8 @@ export type PathEdge = {
 export type QuoteResponse = {
   qid: string;
   amountOut: string; // raw base units of output token
+  minAmountOut?: string | null; // raw base units — guaranteed minimum (slippage-adjusted) from core
+  netAmountOut?: string | null; // raw base units — output net of fees, when core provides it
   routerAddress: string;
   calldata: string;
   simulatedAmountOut?: string | null;

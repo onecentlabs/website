@@ -10,11 +10,14 @@ import { AssetModal } from "./AssetModal";
 import { SettingsPanel } from "./SettingsPanel";
 import { ExecuteButton } from "./ExecuteButton";
 import { CopyAddress } from "./CopyAddress";
+import { RecipientModal } from "./RecipientModal";
+import { addRecentRecipient, getRecipientLabel } from "@r/lib/recipients";
 import { useTokens } from "@r/hooks/useRegistry";
 import { useQuoteCycle } from "@r/hooks/useQuoteCycle";
 import { fetchUsd, type QuoteArgs } from "@r/lib/api";
 import type { QuoteSettings, Token } from "@r/lib/types";
-import { SUPPORTED_CHAINS, DEFAULT_MAX_HOPS, isNativeAddress, nativeGasBufferWei, type SupportedChain } from "@r/lib/chains";
+import { SUPPORTED_CHAINS, DEFAULT_MAX_HOPS, isNativeAddress, nativeGasBufferWei, chainKind, type SupportedChain } from "@r/lib/chains";
+import { normalizeRecipient } from "@r/lib/address";
 import { fromBaseUnits, toBaseUnits, fmtAmount, fmtUsd, shortAddr } from "@r/lib/format";
 
 const PREVIEW_ADDRESS = "0x000000000000000000000000000000000000dEaD";
@@ -83,9 +86,26 @@ export function SwapApp() {
   }, [settings]);
 
   // Optional receiver: send the swap output to an address other than the sender.
+  // Validated + normalized against the OUTPUT chain's address family (EVM today).
   const [customRecv, setCustomRecv] = useState(false);
   const [receiver, setReceiver] = useState("");
-  const receiverValid = /^0x[a-fA-F0-9]{40}$/.test(receiver.trim());
+  const [recvModal, setRecvModal] = useState(false);
+  const recvKind = chainKind(chainOut);
+  const receiverNorm = normalizeRecipient(receiver, recvKind);
+  const receiverValid = receiverNorm !== null;
+  // Picked from the recipient modal — null resets to self (the connected wallet).
+  function selectRecipient(addr: string | null) {
+    if (addr) {
+      const norm = normalizeRecipient(addr, recvKind) ?? addr;
+      setReceiver(norm);
+      setCustomRecv(true);
+      addRecentRecipient(norm);
+    } else {
+      setCustomRecv(false);
+      setReceiver("");
+    }
+    setRecvModal(false);
+  }
 
   const crossChain = chainIn.id !== chainOut.id;
 
@@ -114,16 +134,38 @@ export function SwapApp() {
   const inBalValue = inBal.data?.value ?? null;
   const hasInBal = inBalValue != null && inBalValue > 0n;
 
+  // Slider position (0–100) derived from the entered amount vs balance, so the
+  // thumb stays in sync whether the user drags it or types the amount directly.
+  const pctOfBalance = (() => {
+    if (inBalValue == null || inBalValue === 0n || !effTokenIn) return 0;
+    const n = parseFloat(amount);
+    if (!isFinite(n) || n <= 0) return 0;
+    const bal = Number(fromBaseUnits(String(inBalValue), effTokenIn.decimals));
+    return bal > 0 ? Math.max(0, Math.min(100, (n / bal) * 100)) : 0;
+  })();
+
   function applyPct(pct: number) {
     if (inBalValue == null || !effTokenIn) return;
-    let amt = (inBalValue * BigInt(pct)) / 100n;
+    // Basis-point precision so fractional slider positions (e.g. 37.5%) work.
+    const bps = BigInt(Math.round(Math.max(0, Math.min(100, pct)) * 100));
+    let amt = (inBalValue * bps) / 10_000n;
     // Native MAX: keep a little aside for gas so the swap tx can still pay for
     // itself. Lower percentages already leave a remainder, so only adjust 100%.
-    if (pct === 100 && isNativeAddress(effTokenIn.address)) {
+    if (pct >= 100 && isNativeAddress(effTokenIn.address)) {
       const buffer = nativeGasBufferWei(chainIn.chainId);
       amt = amt > buffer ? amt - buffer : 0n;
     }
     setAmount(formatUnits(amt, effTokenIn.decimals));
+  }
+
+  // Magnetic snap: drag is smooth, but within SNAP_PCT of a breakpoint the value
+  // jumps to it so the common 25/50/75/MAX stops are easy to hit exactly.
+  const SNAP_PCT = 3;
+  function snapPct(v: number): number {
+    for (const bp of [0, 25, 50, 75, 100]) {
+      if (Math.abs(v - bp) <= SNAP_PCT) return bp;
+    }
+    return v;
   }
 
   const amountNum = parseFloat(debouncedAmount);
@@ -132,7 +174,7 @@ export function SwapApp() {
     !!effTokenIn && !!effTokenOut && effTokenIn.address.toLowerCase() === effTokenOut.address.toLowerCase();
 
   // When sending to a custom address, require a valid one before quoting.
-  const recvAddr = customRecv && receiverValid ? receiver.trim() : address ?? undefined;
+  const recvAddr = customRecv && receiverNorm ? receiverNorm : address ?? undefined;
 
   const ready =
     !crossChain && !!effTokenIn && !!effTokenOut && amountValid && !sameToken && (!customRecv || receiverValid);
@@ -208,9 +250,15 @@ export function SwapApp() {
   const inUsd = amountValid && usdIn.data != null ? amountNum * usdIn.data : null;
   const outUsd = outHuman != null && usdOut.data != null ? outHuman * usdOut.data : null;
 
-  // null = Auto: /quote picks the slippage, so we can't compute a min client-side.
   const slipBps = settings.slippageBps;
-  const minReceived = slipBps != null && outHuman != null ? outHuman * (1 - slipBps / 10_000) : null;
+  // Prefer core's guaranteed minimum from the quote (minAmountOut, slippage-aware
+  // incl. Auto). Fall back to the client estimate only when core omits it.
+  const minReceived = useMemo(() => {
+    if (quoteMatchesInput && quote?.minAmountOut != null && effTokenOut) {
+      return fromBaseUnits(quote.minAmountOut, effTokenOut.decimals);
+    }
+    return slipBps != null && outHuman != null ? outHuman * (1 - slipBps / 10_000) : null;
+  }, [quoteMatchesInput, quote?.minAmountOut, effTokenOut, slipBps, outHuman]);
 
   const gasUnits =
     quoteMatchesInput && quote?.computationUnits != null ? Number(quote.computationUnits) : null;
@@ -245,30 +293,23 @@ export function SwapApp() {
 
   return (
     <div className="w-full">
-      {/* title — sits above the widget card */}
-      <div className="mb-4 text-center">
-        <span className="font-display text-[11px] tracking-[0.22em] uppercase text-ink/80">
-          OneCent <span className="text-accent">Router</span>
-        </span>
-      </div>
-
       {/* ── swap widget ── */}
-      <div className="panel p-5 space-y-2.5">
+      <div className="swap-card panel p-4 sm:p-5 space-y-3">
         {/* header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2.5">
             <span className="dot" aria-hidden />
-            <h2 className="font-display text-sm tracking-wide">Trade</h2>
+            <h2 className="text-[22px] tracking-tight">Trade</h2>
           </div>
           <SettingsPanel settings={settings} onChange={setSettings} />
         </div>
 
         {/* FROM — the source surface */}
-        <div className="panel-inset p-3">
+        <div className="panel-inset p-4">
             <div className="flex items-center justify-between mb-2.5 gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="field-label">From</span>
-                {effTokenIn && !isNativeAddress(effTokenIn.address) && <CopyAddress address={effTokenIn.address} />}
+                {effTokenIn && <CopyAddress address={effTokenIn.address} className="font-mono" />}
               </div>
               <ChainSelect value={chainIn} onClick={() => setModal({ side: "in", chainEditable: true })} />
             </div>
@@ -290,25 +331,40 @@ export function SwapApp() {
               />
             </div>
             <div className="mt-1.5 flex items-center justify-between gap-2">
-              <span className="text-[13px] text-ink/60 addr truncate">{inUsd != null ? `≈ ${fmtUsd(inUsd)}` : ""}</span>
+              <span className="text-[16px] text-ink/60 addr truncate">{inUsd != null ? `≈ ${fmtUsd(inUsd)}` : ""}</span>
               {hasInBal && effTokenIn && (
-                <span className="text-[13px] text-ink/60 addr truncate">
+                <span className="text-[16px] text-ink/60 addr truncate">
                   {fmtAmount(fromBaseUnits(String(inBalValue), effTokenIn.decimals))} {effTokenIn.symbol}
                 </span>
               )}
             </div>
-            <div className="mt-3 flex gap-2">
-              {[25, 50, 75, 100].map((pct) => (
-                <button
-                  key={pct}
-                  type="button"
-                  disabled={!hasInBal}
-                  onClick={() => applyPct(pct)}
-                  className="flex-1 py-1.5 text-[11px] font-mono rounded-[var(--r-sm)] border border-line-2 bg-elev text-ink/80 hover:border-accent hover:text-accent hover:bg-accent/10 active:scale-[0.95] transition-all disabled:opacity-45 disabled:pointer-events-none"
-                >
-                  {pct === 100 ? "MAX" : `${pct}%`}
-                </button>
-              ))}
+            {/* balance slider — snaps to 0/25/50/75/MAX; drag or click a tick */}
+            <div className="mt-4 px-0.5">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={0.5}
+                value={pctOfBalance}
+                disabled={!hasInBal}
+                onChange={(e) => applyPct(snapPct(Number(e.target.value)))}
+                aria-label="Amount as percent of balance"
+                className="bal-slider w-full"
+                style={{ "--pct": `${pctOfBalance}%` } as React.CSSProperties}
+              />
+              <div className="mt-1.5 flex justify-between text-[13px] text-faint select-none">
+                {[0, 25, 50, 75, 100].map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={!hasInBal}
+                    onClick={() => applyPct(p)}
+                    className="font-mono hover:text-accent transition-colors disabled:pointer-events-none"
+                  >
+                    {p === 100 ? "MAX" : `${p}%`}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -326,11 +382,11 @@ export function SwapApp() {
         </div>
 
         {/* TO — destination surface */}
-        <div className="panel-inset p-3">
+        <div className="panel-inset p-4">
             <div className="flex items-center justify-between mb-2.5 gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="field-label">To</span>
-                {effTokenOut && !isNativeAddress(effTokenOut.address) && <CopyAddress address={effTokenOut.address} />}
+                {effTokenOut && <CopyAddress address={effTokenOut.address} className="font-mono" />}
               </div>
               <ChainSelect value={chainOut} onClick={() => setModal({ side: "out", chainEditable: true })} />
             </div>
@@ -344,67 +400,38 @@ export function SwapApp() {
                 onClick={() => setModal({ side: "out", chainEditable: false })}
               />
             </div>
-            <div className="mt-1.5 h-4 text-[13px] text-ink/60 addr">{outUsd != null ? `≈ ${fmtUsd(outUsd)}` : ""}</div>
-
-            {/* recipient — defaults to self, opt in to a different address */}
-            <div className="pt-3 flex items-center justify-between gap-2">
-              <span className="field-label">Recipient</span>
-              {!customRecv ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-display text-[0.5rem] uppercase tracking-wider text-muted">Self</span>
-                  <span className="addr text-[12px] text-muted truncate empty:hidden" suppressHydrationWarning>{address ? shortAddr(address) : ""}</span>
-                  <button
-                    type="button"
-                    onClick={() => setCustomRecv(true)}
-                    className="text-[11px] text-muted hover:text-ink transition-colors"
-                  >
-                    Change
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => { setCustomRecv(false); setReceiver(""); }}
-                  className="text-[11px] text-muted hover:text-accent transition-colors"
-                >
-                  Use self
-                </button>
-              )}
-            </div>
-            {customRecv && (
-              <div className="mt-2">
-                <input
-                  spellCheck={false}
-                  autoComplete="off"
-                  placeholder="0x recipient address"
-                  value={receiver}
-                  onChange={(e) => setReceiver(e.target.value)}
-                  className={`bare addr w-full text-sm px-2.5 py-2 border transition-colors ${
-                    receiver.trim() && !receiverValid ? "border-danger" : "border-line focus:border-accent"
-                  }`}
-                />
-                {receiver.trim() && !receiverValid && (
-                  <div className="mt-1 text-[11px] text-danger">Enter a valid 0x address.</div>
-                )}
-              </div>
+            {outUsd != null && (
+              <div className="mt-1.5 text-[16px] text-ink/60 addr">≈ {fmtUsd(outUsd)}</div>
             )}
+
+            {/* recipient — reads "RECIPIENT: SELF"; click the value to open the address book */}
+            <div className="pt-2 flex items-center gap-1.5 min-w-0">
+              <span className="field-label shrink-0">Recipient:</span>
+              <button
+                type="button"
+                onClick={() => setRecvModal(true)}
+                className="group min-w-0 truncate !text-ink/70 hover:!text-accent transition-colors"
+                suppressHydrationWarning
+              >
+                {customRecv && receiverValid ? (
+                  // Address/label keeps its real casing (checksummed 0x…, not 0X…).
+                  <span className="addr text-[16px] !text-ink/70 group-hover:!text-accent transition-colors">{getRecipientLabel(receiver) ?? shortAddr(receiver)}</span>
+                ) : (
+                  <span className="field-label !text-ink/70 group-hover:!text-accent transition-colors">Self</span>
+                )}
+              </button>
+            </div>
           </div>
 
         {/* review — a single terminal-style summary row binds inputs to the action */}
         {!crossChain && !sameToken && (
           <div className="grid grid-cols-[1.4fr_0.8fr_1.2fr] divide-x divide-line border-t border-line pt-4">
             <Stat
-              label="Gas"
-              value={
-                gasNative != null
-                  ? `${fmtAmount(gasNative)} ${chainIn.nativeSymbol}${gasUsd != null ? ` · ${fmtUsd(gasUsd)}` : ""}`
-                  : loading
-                    ? "…"
-                    : "—"
-              }
+              label="Network Cost"
+              value={gasUsd != null ? fmtUsd(gasUsd) : loading ? "…" : "—"}
             />
-            <Stat label="Slippage" value={slipBps == null ? "Auto" : `${slipBps / 100}%`} />
-            <Stat label="Min received" value={minReceived != null && effTokenOut ? `${fmtAmount(minReceived)} ${effTokenOut.symbol}` : loading ? "…" : "—"} />
+            <Stat label="Max Slippage" value={slipBps == null ? "Auto" : `${slipBps / 100}%`} />
+            <Stat label="Min Received" value={minReceived != null && effTokenOut ? `${fmtAmount(minReceived)} ${effTokenOut.symbol}` : loading ? "…" : "—"} />
           </div>
         )}
 
@@ -436,6 +463,16 @@ export function SwapApp() {
           onClose={() => setModal(null)}
         />
       )}
+
+      {recvModal && (
+        <RecipientModal
+          selfAddress={address}
+          current={customRecv && receiverValid ? receiver : null}
+          kind={recvKind}
+          onSelect={selectRecipient}
+          onClose={() => setRecvModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -444,7 +481,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-center text-center gap-1 min-w-0 px-2">
       <span className="field-label">{label}</span>
-      <span className="kpi-num text-[0.95rem] text-ink truncate max-w-full">{value}</span>
+      <span className="kpi-num text-[0.95rem] text-ink/70 truncate max-w-full">{value}</span>
     </div>
   );
 }

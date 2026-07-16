@@ -128,7 +128,7 @@ export function AssetModal({
       <div className="panel w-full max-w-md max-h-[78vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* header */}
         <div className="flex items-center justify-between px-5 py-4 border-b hairline">
-          <span className="font-display text-xs tracking-wide">Select a token</span>
+          <span className="text-[15px] font-semibold tracking-tight">Select a token</span>
           <button className="text-muted hover:text-ink transition-colors" onClick={onClose} aria-label="Close">
             <svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </button>

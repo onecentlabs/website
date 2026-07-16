@@ -7,7 +7,7 @@ export function Hero() {
       <div className="shell flex flex-col justify-center min-h-[calc(100dvh-3.5rem)] py-20">
       <Reveal>
         <h1 className="text-[clamp(2.75rem,6.5vw,5.25rem)] leading-[1.08] tracking-tight max-w-[16ch]">
-          DeFi, <span className="text-accent">abstracted</span>.
+          DeFi, <span className="text-accent">abstracted.</span>
         </h1>
         <div
           className="mt-10 sm:mt-14 font-mono text-[clamp(1.35rem,2vw,1.7rem)] leading-none"
@@ -21,7 +21,7 @@ export function Hero() {
         </div>
         <div className="mt-16 sm:mt-24 flex flex-wrap items-center gap-6">
           <a href="#contact" className="pixel-btn min-w-[15.5rem] justify-center">
-            Request early access
+            Request access
           </a>
         </div>
       </Reveal>
