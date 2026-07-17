@@ -211,6 +211,8 @@ export function SwapApp() {
   const quoteArgs: QuoteArgs | null = ready
     ? {
         blockchainId: chainIn.id,
+        // Destination chain — enables bridging when it differs from the source.
+        destinationBlockchainId: chainOut.id,
         inputToken: effTokenIn!.address,
         outputToken: effTokenOut!.address,
         inputAmount: debouncedAmount,

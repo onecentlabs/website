@@ -20,7 +20,10 @@ async function gateway<T>(a: string, p: Record<string, unknown>, signal?: AbortS
 }
 
 export type QuoteArgs = {
-  blockchainId: string;
+  blockchainId: string; // source chain
+  /** destination chain for a bridge (cross-chain). Omit / equal to source for a same-chain swap. */
+  destinationBlockchainId?: string;
+  rawDestinationBlockchainId?: string;
   inputToken: string;
   outputToken: string;
   inputAmount: string; // human decimal
@@ -47,6 +50,8 @@ export function fetchQuote(args: QuoteArgs, signal?: AbortSignal): Promise<Quote
     // (upstream defaults it to false), so always request it.
     tokenData: args.tokenData ?? true,
   };
+  if (args.destinationBlockchainId) p.destinationBlockchainId = args.destinationBlockchainId;
+  if (args.rawDestinationBlockchainId) p.rawDestinationBlockchainId = args.rawDestinationBlockchainId;
   if (args.receiverAddress) p.receiverAddress = args.receiverAddress;
   if (args.slippageBps != null) p.slippageBps = args.slippageBps;
   if (args.maxHops != null) p.maxHops = args.maxHops;
