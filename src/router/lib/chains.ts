@@ -1,5 +1,13 @@
-import { mainnet, base, arbitrum } from "wagmi/chains";
-import type { Chain } from "viem";
+import { mainnet, base, arbitrum, bsc, polygon } from "wagmi/chains";
+import { defineChain, type Chain } from "viem";
+
+/** Robinhood Chain — not in viem/wagmi, defined here from its published params. */
+export const robinhoodChain = defineChain({
+  id: 4663,
+  name: "Robinhood Chain",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.mainnet.chain.robinhood.com"] } },
+});
 
 /**
  * Chains the router supports for execution. Mirrors core's
@@ -22,6 +30,15 @@ export type SupportedChain = {
   wrappedNative: string;
   /** address family (defaults to EVM); set "svm" when Solana is added */
   kind?: ChainKind;
+  /** registry key for the logo lookup, when it differs from `id` (defaults to `id`) */
+  logoKey?: string;
+  /**
+   * Whether Sequence WaaS supports this chain. Chains set to `false` are kept out
+   * of the Sequence `chainIds` (its embedded/guest/social wallets can't sign for
+   * them) but still registered with wagmi, so external wallets (MetaMask,
+   * WalletConnect, injected) can transact on them. Defaults to true.
+   */
+  waasSupported?: boolean;
 };
 
 /** Address family — drives recipient validation. Solana ("svm") is future. */
@@ -36,6 +53,10 @@ export const SUPPORTED_CHAINS: SupportedChain[] = [
   { id: "ethereum", chainId: 1, label: "Ethereum", viem: mainnet, nativeSymbol: "ETH", wrappedNative: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },
   { id: "base", chainId: 8453, label: "Base", viem: base, nativeSymbol: "ETH", wrappedNative: "0x4200000000000000000000000000000000000006" },
   { id: "arbitrum", chainId: 42161, label: "Arbitrum", viem: arbitrum, nativeSymbol: "ETH", wrappedNative: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1" },
+  { id: "binance", chainId: 56, label: "Binance", viem: bsc, nativeSymbol: "BNB", wrappedNative: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c" },
+  { id: "polygon", chainId: 137, label: "Polygon", viem: polygon, nativeSymbol: "POL", wrappedNative: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270" },
+  // Robinhood: Sequence WaaS doesn't support 4663 → external wallets only (see waasSupported).
+  { id: "robinhood", chainId: 4663, label: "Robinhood", viem: robinhoodChain, nativeSymbol: "ETH", wrappedNative: "0x0bd7d308f8e1639fab988df18a8011f41eacad73", waasSupported: false },
 ];
 
 export const CHAIN_BY_ID = new Map(SUPPORTED_CHAINS.map((c) => [c.id, c]));
@@ -66,6 +87,8 @@ const NATIVE_GAS_BUFFER_WEI: Record<number, bigint> = {
   1: 1_500_000_000_000_000n, // Ethereum  ~0.0015 ETH
   42161: 50_000_000_000_000n, // Arbitrum ~0.00005 ETH
   8453: 50_000_000_000_000n, // Base      ~0.00005 ETH
+  56: 2_000_000_000_000_000n, // BNB Chain ~0.002 BNB
+  137: 50_000_000_000_000_000n, // Polygon ~0.05 POL
 };
 
 export function nativeGasBufferWei(chainId: number): bigint {
