@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
  */
 
 const QUOTE_KEYS = [
-  "blockchainId", "inputToken", "outputToken", "inputAmount", "userAddress",
+  "blockchainId", "destinationBlockchainId", "rawDestinationBlockchainId",
+  "inputToken", "outputToken", "inputAmount", "userAddress",
   "receiverAddress", "simulationAddress", "slippageBps", "maxHops",
   "simulation", "patchers", "baselines", "rawBlockchainId", "cid",
   "tokenData", "incognito",

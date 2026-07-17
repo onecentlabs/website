@@ -14,7 +14,7 @@ export function ChainSelect({ value, onClick }: { value: SupportedChain; onClick
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={chainLogo(value.id)}
+        src={chainLogo(value.logoKey ?? value.id)}
         alt={value.label}
         width={20}
         height={20}

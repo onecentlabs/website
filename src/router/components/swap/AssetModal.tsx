@@ -138,22 +138,32 @@ export function AssetModal({
         {chainEditable && (
           <div className="px-4 pt-4">
             <span className="field-label block mb-2">Network</span>
-            <div className="flex gap-2 overflow-x-auto thin-scroll pb-1">
+            {/* Logo-only, equal-width buttons that split the row — they shrink to fit
+                as more chains are added, so all fit without a scrollbar. */}
+            <div className="flex gap-2">
               {SUPPORTED_CHAINS.map((c) => {
                 const isActive = c.id === active.id;
                 return (
                   <button
                     key={c.id}
                     onClick={() => setActive(c)}
-                    className={`flex items-center gap-2 pl-1.5 pr-3 py-1.5 border shrink-0 transition-colors ${
+                    title={c.label}
+                    aria-label={c.label}
+                    className={`grid flex-1 min-w-0 place-items-center rounded-[var(--r-sm)] border py-2.5 transition-colors ${
                       isActive
-                        ? "border-accent text-ink bg-accent/10"
-                        : "border-line text-muted hover:border-line-2 hover:text-ink"
+                        ? "border-accent bg-accent/10"
+                        : "border-line hover:border-line-2 hover:bg-white/[0.04]"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={chainLogo(c.id)} alt="" width={18} height={18} className="rounded-full" onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")} />
-                    <span className="text-[13px]">{c.label}</span>
+                    <img
+                      src={chainLogo(c.logoKey ?? c.id)}
+                      alt=""
+                      width={30}
+                      height={30}
+                      className={`h-[clamp(22px,6vw,30px)] w-[clamp(22px,6vw,30px)] rounded-full transition-opacity ${isActive ? "" : "opacity-70 hover:opacity-100"}`}
+                      onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")}
+                    />
                   </button>
                 );
               })}

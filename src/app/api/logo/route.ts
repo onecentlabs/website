@@ -17,8 +17,10 @@ const BLANK = Buffer.from(
 );
 
 function blank() {
+  // Don't cache failures — a logo that's temporarily missing (registry lag, etc.)
+  // must not stick as a blank for an hour once it starts resolving.
   return new Response(new Uint8Array(BLANK), {
-    headers: { "content-type": "image/gif", "cache-control": "public, max-age=3600" },
+    headers: { "content-type": "image/gif", "cache-control": "no-store" },
   });
 }
 
