@@ -15,7 +15,7 @@ export default function DocsPage() {
           <span className="text-accent">docs --status: in progress_</span>
         </div>
         <p className="mt-6 max-w-md text-muted">
-          Guides and API references for the OneCent router are being written.
+          Guide for the OneCent Router is cooking.
         </p>
       </div>
     </section>

@@ -176,10 +176,11 @@ a.link:hover { border-color: var(--accent); }
   stroke-linejoin: miter;
   stroke-linecap: round;
 }
-/* Hover: recolor the arrow red (no size change) to signal an interactive target. */
+/* Hover: brighten the arrow to a lighter lime (same green family as the idle
+   cursor, no size change) so it "lights up" on an interactive target. */
 .cursor-pixel[data-hover="true"] .cp-fg {
-  fill: #ff4d4d;
-  stroke: #ff4d4d;
+  fill: #d7ff70;
+  stroke: #d7ff70;
 }
 /* Private mode: the cursor turns violet to match the private theme (green would
    clash on the violet page). Hover still goes red as the interactive cue. */
