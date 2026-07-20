@@ -14,13 +14,23 @@ import {
 } from "@wagmi/core";
 import { erc20Abi, maxUint256, type Hex } from "viem";
 import type { Token, QuoteResponse } from "@r/lib/types";
-import { type SupportedChain, isNativeAddress, ROUTER_ADDRESS } from "@r/lib/chains";
+import { type SupportedChain, isNativeAddress } from "@r/lib/chains";
 import { toBaseUnits, fromBaseUnits, fmtAmount } from "@r/lib/format";
+import { fetchBalance } from "@r/lib/api";
 
-type Phase = "idle" | "switch" | "approve" | "swap" | "done" | "error";
+type Phase = "idle" | "switch" | "approve" | "swap" | "bridging" | "done" | "error";
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Cross-chain settlement polling: how long to watch the dest chain, and how
+// often. Bridges usually land in seconds-to-minutes; give it a generous cap.
+const BRIDGE_TIMEOUT_MS = 20 * 60 * 1000;
+const BRIDGE_POLL_MS = 10_000;
 
 export function ExecuteButton({
   chain,
+  destChain,
+  recipient,
   inputToken,
   outputToken,
   amount,
@@ -29,6 +39,10 @@ export function ExecuteButton({
   insufficientBalance = false,
 }: {
   chain: SupportedChain;
+  /** Destination chain — differs from `chain` on a bridge. */
+  destChain?: SupportedChain;
+  /** Address that receives the output (self or a custom recipient). */
+  recipient?: string;
   inputToken: Token | null;
   outputToken?: Token | null;
   amount: string;
@@ -52,8 +66,11 @@ export function ExecuteButton({
   const [closing, setClosing] = useState(false);
   const autoTimer = useRef<number | undefined>(undefined);
   const exitTimer = useRef<number | undefined>(undefined);
+  // Set on unmount so an in-flight bridge poll stops touching state.
+  const cancelledRef = useRef(false);
   useEffect(
     () => () => {
+      cancelledRef.current = true;
       window.clearTimeout(autoTimer.current);
       window.clearTimeout(exitTimer.current);
     },
@@ -78,6 +95,7 @@ export function ExecuteButton({
   }
 
   const explorer = chain.viem.blockExplorers?.default?.url;
+  const crossChain = !!destChain && destChain.chainId !== chain.chainId;
 
   async function execute() {
     if (!quote || !inputToken || !address) return;
@@ -95,12 +113,13 @@ export function ExecuteButton({
       const amountWei = toBaseUnits(amount, inputToken.decimals);
       const router = quote.routerAddress as Hex;
 
-      // Safety pin: the router contract is the same known address on every
-      // supported chain. Refuse to approve spend or send funds to anything else,
-      // so a compromised/buggy quote can't redirect approval or value.
-      if (router.toLowerCase() !== ROUTER_ADDRESS.toLowerCase()) {
+      // The router comes from the quote response — it can differ per chain and
+      // per bridge route, so there's no single constant to pin against. Guard
+      // against a malformed / zero address so a broken quote can never redirect
+      // an approval or a value transfer to garbage.
+      if (!/^0x[0-9a-fA-F]{40}$/.test(router) || isNativeAddress(router)) {
         setPhase("error");
-        setMsg("Unexpected router address — aborting for your safety.");
+        setMsg("Invalid router address in quote — aborting for your safety.");
         return;
       }
 
@@ -130,6 +149,20 @@ export function ExecuteButton({
         }
       }
 
+      // Cross-chain: snapshot the recipient's dest-chain balance BEFORE sending
+      // so we can detect the exact increase once the bridge settles. Falls back
+      // to null when the read fails (then we can't confirm settlement).
+      const to = recipient ?? address;
+      let destBefore: bigint | null = null;
+      if (crossChain && destChain && outputToken && to) {
+        try {
+          const { balance } = await fetchBalance(destChain.id, outputToken.address, to);
+          destBefore = balance != null ? BigInt(balance) : 0n;
+        } catch {
+          destBefore = null;
+        }
+      }
+
       // 3. Trade — send the router calldata verbatim
       setPhase("swap");
       setMsg("Confirm trade in wallet…");
@@ -142,7 +175,14 @@ export function ExecuteButton({
       setTxHash(hash);
       setMsg("Executing trade…");
       const receipt = await waitForTransactionReceipt(config, { hash, chainId: chain.chainId });
-      if (receipt.status === "success") {
+      if (receipt.status !== "success") {
+        setPhase("error");
+        setMsg("Transaction reverted");
+        return;
+      }
+
+      // Same-chain swap: the output is already in the recipient's wallet.
+      if (!crossChain || !destChain) {
         setPhase("done");
         setMsg(""); // success surfaces as the top-right notification, not inline
         if (explorer) {
@@ -153,9 +193,56 @@ export function ExecuteButton({
               : "";
           showToast(`${explorer}/tx/${hash}`, recv);
         }
+        return;
+      }
+
+      // Cross-chain: the source tx only INITIATES the bridge. Without a baseline
+      // (or output token) we can't confirm settlement — point the user at the
+      // dest explorer instead of falsely claiming receipt.
+      if (!outputToken || destBefore == null) {
+        setPhase("done");
+        setMsg(`Bridge sent to ${destChain.label}. Track your funds on the destination explorer.`);
+        return;
+      }
+
+      // Poll the dest chain until the recipient's balance rises past the
+      // guaranteed minimum (destBefore + minAmountOut). Transient RPC failures
+      // are swallowed so a single bad poll doesn't abort tracking.
+      setPhase("bridging");
+      setMsg(`Bridging to ${destChain.label} — waiting for funds…`);
+      let minOut = 0n;
+      const minOutStr = quote.minAmountOut ?? quote.simulatedAmountOut ?? quote.amountOut;
+      try {
+        if (minOutStr != null) minOut = BigInt(minOutStr);
+      } catch {
+        /* leave 0n → any increase counts */
+      }
+      const target = destBefore + (minOut > 0n ? minOut : 1n);
+      const started = Date.now();
+      let received: bigint | null = null;
+      while (Date.now() - started < BRIDGE_TIMEOUT_MS) {
+        await sleep(BRIDGE_POLL_MS);
+        if (cancelledRef.current) return;
+        try {
+          const { balance } = await fetchBalance(destChain.id, outputToken.address, to!);
+          const bal = balance != null ? BigInt(balance) : null;
+          if (bal != null && bal >= target) {
+            received = bal - destBefore;
+            break;
+          }
+        } catch {
+          /* transient RPC failure — keep polling */
+        }
+      }
+
+      setPhase("done");
+      if (received != null) {
+        setMsg("");
+        const destExplorer = destChain.viem.blockExplorers?.default?.url;
+        const recv = `${fmtAmount(fromBaseUnits(received.toString(), outputToken.decimals))} ${outputToken.symbol}`;
+        if (destExplorer && to) showToast(`${destExplorer}/address/${to}`, recv);
       } else {
-        setPhase("error");
-        setMsg("Transaction reverted");
+        setMsg(`Bridge sent. Funds not detected on ${destChain.label} yet — this can take a few minutes.`);
       }
     } catch (e) {
       setPhase("error");
@@ -164,20 +251,22 @@ export function ExecuteButton({
     }
   }
 
-  const busy = phase === "switch" || phase === "approve" || phase === "swap";
+  const busy = phase === "switch" || phase === "approve" || phase === "swap" || phase === "bridging";
   const label = !connected
     ? "Connect wallet to trade"
     : !ready
       ? "Enter an amount"
       : insufficientBalance
         ? "Insufficient Balance"
-        : busy
-          ? "Working…"
-          : phase === "done"
-            ? "Trade again"
-            : inputToken && amount
-              ? `Trade ${amount} ${inputToken.symbol}`
-              : "Trade";
+        : phase === "bridging"
+          ? "Bridging…"
+          : busy
+            ? "Working…"
+            : phase === "done"
+              ? "Trade again"
+              : inputToken && amount
+                ? `Trade ${amount} ${inputToken.symbol}`
+                : "Trade";
 
   return (
     <div className="space-y-2">

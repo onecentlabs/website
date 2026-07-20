@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { coreText, registry, stripLogos } from "@r/lib/upstream";
+import { rpcBalance } from "@r/lib/rpc";
 
 // Node runtime (needs server env + fetch with secret header). Never cached.
 export const runtime = "nodejs";
@@ -104,6 +105,15 @@ export async function POST(req: Request) {
       case "c": {
         const { status, body } = await registry("/chains");
         return NextResponse.json(body, { status, headers: { "cache-control": "no-store" } });
+      }
+      case "b": {
+        // Dest-chain balance for bridge settlement tracking (public RPCs).
+        const chain = typeof p.chain === "string" ? p.chain : "";
+        const token = typeof p.token === "string" ? p.token : "";
+        const addr = typeof p.address === "string" ? p.address : "";
+        if (!chain || !token || !addr) return NextResponse.json({ error: "bad request" }, { status: 400 });
+        const balance = await rpcBalance(chain, token, addr);
+        return NextResponse.json({ balance }, { headers: { "cache-control": "no-store" } });
       }
       default:
         return NextResponse.json({ error: "unknown action" }, { status: 400 });

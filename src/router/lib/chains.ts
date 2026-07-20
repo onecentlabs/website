@@ -76,9 +76,6 @@ export function isNativeAddress(addr: string | undefined): boolean {
   return a === NATIVE_SENTINEL || a === ZERO_ADDRESS;
 }
 
-/** Router execution contract — same address on every supported chain. */
-export const ROUTER_ADDRESS = "0xaa25c358cda5cb2972676dcecdf9a2b272c63493";
-
 /**
  * Wei held back for gas when the user taps MAX on the native asset, so the
  * swap transaction still has gas to spend. L1 is pricier than the L2s.

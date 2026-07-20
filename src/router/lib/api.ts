@@ -69,6 +69,20 @@ export function fetchTokens(chainId: number | string, signal?: AbortSignal): Pro
   return gateway<TokensResponse>("t", { chains: String(chainId) }, signal);
 }
 
+/**
+ * Dest-chain balance (decimal wei string, or null) of `token` held by `address`
+ * on `chain` (our chain id). Used to poll for bridged funds landing on the
+ * destination chain after the source-chain tx has confirmed.
+ */
+export function fetchBalance(
+  chain: string,
+  token: string,
+  address: string,
+  signal?: AbortSignal,
+): Promise<{ balance: string | null }> {
+  return gateway<{ balance: string | null }>("b", { chain, token, address }, signal);
+}
+
 /** Build the same-origin logo URL for a token (image bytes proxied server-side). */
 export function tokenLogo(chainId: number, address: string): string {
   return `/api/logo?c=${chainId}&a=${address.toLowerCase()}`;
