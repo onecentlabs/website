@@ -214,11 +214,14 @@ export function SwapApp() {
   const quoteArgs: QuoteArgs | null = ready
     ? {
         blockchainId: chainIn.id,
-        // Destination chain — enables bridging when it differs from the source.
-        destinationBlockchainId: chainOut.id,
         inputToken: effTokenIn!.address,
         outputToken: effTokenOut!.address,
+        // Human decimal on every path — same-chain and bridge alike. Core reads
+        // the input as a human amount and returns amountOut in base units (wei).
         inputAmount: debouncedAmount,
+        // Destination chain is sent only for actual bridges (src != dest); a
+        // differing destinationBlockchainId is what puts core into bridge mode.
+        ...(crossChain ? { destinationBlockchainId: chainOut.id } : {}),
         userAddress: address ?? PREVIEW_ADDRESS,
         receiverAddress: recvAddr,
         slippageBps: settings.slippageBps,
@@ -231,8 +234,10 @@ export function SwapApp() {
       }
     : null;
 
+  // Bridges don't return a simulation (core simulates same-chain only), so don't
+  // expect one — otherwise every bridge quote flags a false "simulation failed".
   const { quote, quoteInputAmount, error, loading, simulationFailed } =
-    useQuoteCycle(quoteArgs, ready, hasSufficientBal);
+    useQuoteCycle(quoteArgs, ready, hasSufficientBal && !crossChain);
 
   const usdIn = useUsd(chainIn.id, effTokenIn);
   const usdOut = useUsd(chainOut.id, effTokenOut);

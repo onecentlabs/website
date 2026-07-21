@@ -26,7 +26,7 @@ export type QuoteArgs = {
   rawDestinationBlockchainId?: string;
   inputToken: string;
   outputToken: string;
-  inputAmount: string; // human decimal
+  inputAmount: string; // human decimal ("0.001") — same-chain and bridge alike
   userAddress: string;
   receiverAddress?: string;
   slippageBps?: number | null;
