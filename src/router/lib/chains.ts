@@ -62,6 +62,26 @@ export const SUPPORTED_CHAINS: SupportedChain[] = [
 export const CHAIN_BY_ID = new Map(SUPPORTED_CHAINS.map((c) => [c.id, c]));
 export const CHAIN_BY_NUM = new Map(SUPPORTED_CHAINS.map((c) => [c.chainId, c]));
 
+/**
+ * Circle CCTP domain IDs (NOT EVM chain ids) for the chains we support that
+ * CCTP covers — used to query the Iris attestation API for bridge settlement.
+ * See https://developers.circle.com/cctp. Chains absent here (binance,
+ * robinhood) aren't CCTP domains → bridge tracking falls back to balance polls.
+ */
+const CCTP_DOMAINS: Record<string, number> = {
+  ethereum: 0,
+  arbitrum: 3,
+  base: 6,
+  polygon: 7,
+};
+
+/** CCTP domain id for a chain, or null when the chain isn't a CCTP domain. */
+export function cctpDomain(chain: SupportedChain | undefined): number | null {
+  if (!chain) return null;
+  const d = CCTP_DOMAINS[chain.id];
+  return d === undefined ? null : d;
+}
+
 export function chainById(id: string | undefined): SupportedChain | undefined {
   return id ? CHAIN_BY_ID.get(id) : undefined;
 }
@@ -75,9 +95,6 @@ export function isNativeAddress(addr: string | undefined): boolean {
   const a = addr.toLowerCase();
   return a === NATIVE_SENTINEL || a === ZERO_ADDRESS;
 }
-
-/** Router execution contract — same address on every supported chain. */
-export const ROUTER_ADDRESS = "0xaa25c358cda5cb2972676dcecdf9a2b272c63493";
 
 /**
  * Wei held back for gas when the user taps MAX on the native asset, so the

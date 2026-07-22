@@ -191,12 +191,15 @@ export function SwapApp() {
   const amountValid = isFinite(amountNum) && amountNum > 0;
   const sameToken =
     !!effTokenIn && !!effTokenOut && effTokenIn.address.toLowerCase() === effTokenOut.address.toLowerCase();
+  // Same token only blocks a *same-chain* swap; the identical asset on two
+  // different chains is a valid bridge (e.g. USDC arbitrum → USDC base).
+  const sameTokenSameChain = sameToken && !crossChain;
 
   // When sending to a custom address, require a valid one before quoting.
   const recvAddr = customRecv && receiverNorm ? receiverNorm : address ?? undefined;
 
   const ready =
-    !crossChain && !!effTokenIn && !!effTokenOut && amountValid && !sameToken && (!customRecv || receiverValid);
+    !sameTokenSameChain && !!effTokenIn && !!effTokenOut && amountValid && (!customRecv || receiverValid);
 
   // Always simulate: the backend funds the sim via state overrides (works even
   // for the preview address), so we get simulatedAmountOut + computationUnits
@@ -211,11 +214,14 @@ export function SwapApp() {
   const quoteArgs: QuoteArgs | null = ready
     ? {
         blockchainId: chainIn.id,
-        // Destination chain — enables bridging when it differs from the source.
-        destinationBlockchainId: chainOut.id,
         inputToken: effTokenIn!.address,
         outputToken: effTokenOut!.address,
+        // Human decimal on every path — same-chain and bridge alike. Core reads
+        // the input as a human amount and returns amountOut in base units (wei).
         inputAmount: debouncedAmount,
+        // Destination chain is sent only for actual bridges (src != dest); a
+        // differing destinationBlockchainId is what puts core into bridge mode.
+        ...(crossChain ? { destinationBlockchainId: chainOut.id } : {}),
         userAddress: address ?? PREVIEW_ADDRESS,
         receiverAddress: recvAddr,
         slippageBps: settings.slippageBps,
@@ -228,8 +234,10 @@ export function SwapApp() {
       }
     : null;
 
+  // Bridges don't return a simulation (core simulates same-chain only), so don't
+  // expect one — otherwise every bridge quote flags a false "simulation failed".
   const { quote, quoteInputAmount, error, loading, simulationFailed } =
-    useQuoteCycle(quoteArgs, ready, hasSufficientBal);
+    useQuoteCycle(quoteArgs, ready, hasSufficientBal && !crossChain);
 
   const usdIn = useUsd(chainIn.id, effTokenIn);
   const usdOut = useUsd(chainOut.id, effTokenOut);
@@ -475,7 +483,7 @@ export function SwapApp() {
           </div>
 
         {/* review — a single terminal-style summary row binds inputs to the action */}
-        {!crossChain && !sameToken && (
+        {!sameTokenSameChain && (
           <div className="grid grid-cols-3 divide-x divide-line border-t border-line pt-4">
             <Stat
               label="Network Cost"
@@ -488,19 +496,14 @@ export function SwapApp() {
 
         {/* action — notices sit directly on the CTA so warnings read as part of it */}
         <div className="space-y-2">
-          {crossChain && (
-            <div className="flex items-center gap-2 px-1 text-[13px] text-accent-2">
-              <span className="dot" style={{ background: "var(--accent-2)" }} /> Cross-chain routing is coming soon — choose the same network on both sides.
-            </div>
-          )}
-          {!crossChain && sameToken && <div className="px-1 text-[13px] text-muted">Choose two different tokens.</div>}
-          {!crossChain && !sameToken && error && (
+          {sameTokenSameChain && <div className="px-1 text-[13px] text-muted">Choose two different tokens.</div>}
+          {!sameTokenSameChain && error && (
             <div className="flex items-center gap-2 px-1 text-[13px] text-danger"><span aria-hidden>⚠</span> {error}</div>
           )}
-          {!crossChain && !sameToken && !error && simFailed && (
+          {!sameTokenSameChain && !error && simFailed && (
             <div className="flex items-center gap-2 px-1 text-[13px] text-danger"><span aria-hidden>⚠</span> Simulation failed — amount shown is a routing estimate.</div>
           )}
-          <ExecuteButton chain={chainIn} inputToken={effTokenIn} outputToken={effTokenOut} amount={debouncedAmount} quote={quote} ready={ready} insufficientBalance={insufficientBalance} />
+          <ExecuteButton chain={chainIn} destChain={chainOut} recipient={recvAddr} inputToken={effTokenIn} outputToken={effTokenOut} amount={debouncedAmount} quote={quote} ready={ready} insufficientBalance={insufficientBalance} />
         </div>
         </div>
 

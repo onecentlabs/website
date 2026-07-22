@@ -14,13 +14,32 @@ import {
 } from "@wagmi/core";
 import { erc20Abi, maxUint256, type Hex } from "viem";
 import type { Token, QuoteResponse } from "@r/lib/types";
-import { type SupportedChain, isNativeAddress, ROUTER_ADDRESS } from "@r/lib/chains";
+import { type SupportedChain, isNativeAddress, cctpDomain } from "@r/lib/chains";
 import { toBaseUnits, fromBaseUnits, fmtAmount } from "@r/lib/format";
+import { fetchBalance, fetchCctpStatus, type CctpStatus } from "@r/lib/api";
 
-type Phase = "idle" | "switch" | "approve" | "swap" | "done" | "error";
+type Phase = "idle" | "switch" | "approve" | "swap" | "bridging" | "done" | "error";
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Cross-chain settlement polling: how long to watch the dest chain, and how
+// often. Bridges usually land in seconds-to-minutes; give it a generous cap.
+const BRIDGE_TIMEOUT_MS = 20 * 60 * 1000;
+const BRIDGE_POLL_MS = 10_000;
+// After the recipient balance first rises but before it reaches the quoted
+// minimum, wait this long for it to settle, then accept the increase. Covers a
+// dest-side bridge fee / rounding that lands funds just under minAmountOut.
+const BRIDGE_GRACE_MS = 60_000;
+// CCTP attestation polling (Circle Iris). If no CCTP message appears within the
+// probe window after the source tx, the route isn't CCTP → fall back to the
+// dest-balance poll.
+const CCTP_POLL_MS = 8_000;
+const CCTP_PROBE_MS = 90_000;
 
 export function ExecuteButton({
   chain,
+  destChain,
+  recipient,
   inputToken,
   outputToken,
   amount,
@@ -29,6 +48,10 @@ export function ExecuteButton({
   insufficientBalance = false,
 }: {
   chain: SupportedChain;
+  /** Destination chain — differs from `chain` on a bridge. */
+  destChain?: SupportedChain;
+  /** Address that receives the output (self or a custom recipient). */
+  recipient?: string;
   inputToken: Token | null;
   outputToken?: Token | null;
   amount: string;
@@ -52,8 +75,11 @@ export function ExecuteButton({
   const [closing, setClosing] = useState(false);
   const autoTimer = useRef<number | undefined>(undefined);
   const exitTimer = useRef<number | undefined>(undefined);
+  // Set on unmount so an in-flight bridge poll stops touching state.
+  const cancelledRef = useRef(false);
   useEffect(
     () => () => {
+      cancelledRef.current = true;
       window.clearTimeout(autoTimer.current);
       window.clearTimeout(exitTimer.current);
     },
@@ -78,6 +104,7 @@ export function ExecuteButton({
   }
 
   const explorer = chain.viem.blockExplorers?.default?.url;
+  const crossChain = !!destChain && destChain.chainId !== chain.chainId;
 
   async function execute() {
     if (!quote || !inputToken || !address) return;
@@ -95,12 +122,13 @@ export function ExecuteButton({
       const amountWei = toBaseUnits(amount, inputToken.decimals);
       const router = quote.routerAddress as Hex;
 
-      // Safety pin: the router contract is the same known address on every
-      // supported chain. Refuse to approve spend or send funds to anything else,
-      // so a compromised/buggy quote can't redirect approval or value.
-      if (router.toLowerCase() !== ROUTER_ADDRESS.toLowerCase()) {
+      // The router comes from the quote response — it can differ per chain and
+      // per bridge route, so there's no single constant to pin against. Guard
+      // against a malformed / zero address so a broken quote can never redirect
+      // an approval or a value transfer to garbage.
+      if (!/^0x[0-9a-fA-F]{40}$/.test(router) || isNativeAddress(router)) {
         setPhase("error");
-        setMsg("Unexpected router address — aborting for your safety.");
+        setMsg("Invalid router address in quote — aborting for your safety.");
         return;
       }
 
@@ -130,6 +158,32 @@ export function ExecuteButton({
         }
       }
 
+      // Cross-chain: snapshot the recipient's dest-chain balance BEFORE sending
+      // so we can detect the exact increase once the bridge settles. Falls back
+      // to null when the read fails (then we can't confirm settlement).
+      const to = recipient ?? address;
+      let destBefore: bigint | null = null;
+      if (crossChain && destChain && outputToken && to) {
+        // Retry a few times — a single flaky RPC read shouldn't permanently
+        // disable settlement tracking (previously one failure → null → no poll).
+        // A NULL balance means "couldn't read" (not zero: rpcBalance returns the
+        // string "0" for a genuine zero). Leave destBefore null on repeated nulls
+        // so the explorer fallback fires instead of coercing to 0n and polling a
+        // blind chain for the full 20-minute timeout.
+        for (let i = 0; i < 3 && destBefore == null; i++) {
+          try {
+            const { balance } = await fetchBalance(destChain.id, outputToken.address, to);
+            if (balance != null) {
+              destBefore = BigInt(balance);
+              break;
+            }
+          } catch {
+            /* fall through to retry */
+          }
+          if (i < 2) await sleep(1_500);
+        }
+      }
+
       // 3. Trade — send the router calldata verbatim
       setPhase("swap");
       setMsg("Confirm trade in wallet…");
@@ -142,7 +196,14 @@ export function ExecuteButton({
       setTxHash(hash);
       setMsg("Executing trade…");
       const receipt = await waitForTransactionReceipt(config, { hash, chainId: chain.chainId });
-      if (receipt.status === "success") {
+      if (receipt.status !== "success") {
+        setPhase("error");
+        setMsg("Transaction reverted");
+        return;
+      }
+
+      // Same-chain swap: the output is already in the recipient's wallet.
+      if (!crossChain || !destChain) {
         setPhase("done");
         setMsg(""); // success surfaces as the top-right notification, not inline
         if (explorer) {
@@ -153,9 +214,142 @@ export function ExecuteButton({
               : "";
           showToast(`${explorer}/tx/${hash}`, recv);
         }
+        return;
+      }
+
+      // ── Cross-chain settlement tracking ──────────────────────────────────
+      // Prefer Circle CCTP attestation: deterministic, keyed by the SOURCE tx
+      // hash, so it's immune to the dest token/recipient mismatches that break
+      // balance polling (e.g. a CCTP mint routed through a settlement address,
+      // or output delivered as WETH vs native ETH). Falls back to the balance
+      // poll below only when the route isn't CCTP.
+      setPhase("bridging");
+      setMsg(`Bridging to ${destChain.label}…`);
+      const srcDomain = cctpDomain(chain);
+      const dstDomain = cctpDomain(destChain);
+      if (srcDomain != null) {
+        const probeUntil = Date.now() + CCTP_PROBE_MS; // window to decide "is this CCTP?"
+        const deadline = Date.now() + BRIDGE_TIMEOUT_MS;
+        let cctpRoute = false;
+        let settled = false;
+        while (Date.now() < deadline) {
+          if (cancelledRef.current) return;
+          let status: CctpStatus = "none";
+          try {
+            status = await fetchCctpStatus(srcDomain, hash, dstDomain);
+          } catch {
+            /* transient — keep polling */
+          }
+          if (status === "complete") {
+            settled = true;
+            break;
+          }
+          if (status === "pending") cctpRoute = true;
+          // No CCTP message within the probe window → not a CCTP route; stop and
+          // let the balance poll below handle it.
+          if (!cctpRoute && Date.now() > probeUntil) break;
+          await sleep(CCTP_POLL_MS);
+        }
+        const destExplorer = destChain.viem.blockExplorers?.default?.url;
+        if (settled) {
+          setPhase("done");
+          setMsg("");
+          const raw = quote.simulatedAmountOut ?? quote.amountOut;
+          const recv =
+            outputToken && raw != null
+              ? `${fmtAmount(fromBaseUnits(raw, outputToken.decimals))} ${outputToken.symbol}`
+              : "";
+          if (destExplorer && to) showToast(`${destExplorer}/address/${to}`, recv);
+          else setMsg(`Bridge completed on ${destChain.label}.`);
+          return;
+        }
+        if (cctpRoute) {
+          // CCTP route confirmed, but attestation didn't sign before the timeout.
+          setPhase("done");
+          const track = destExplorer && to ? ` Track it here: ${destExplorer}/address/${to}` : "";
+          setMsg(`Bridge attestation still pending for ${destChain.label} — this can take a few minutes.${track}`);
+          return;
+        }
+        // Not CCTP → fall through to the balance poll.
+      }
+
+      // Non-CCTP route: the source tx only INITIATES the bridge. Without a
+      // baseline (or output token) we can't confirm settlement — point the user
+      // at the dest explorer instead of falsely claiming receipt.
+      if (!outputToken || destBefore == null) {
+        setPhase("done");
+        setMsg(`Bridge sent to ${destChain.label}. Track your funds on the destination explorer.`);
+        return;
+      }
+
+      // Poll the dest chain until the recipient's balance rises past the
+      // guaranteed minimum (destBefore + minAmountOut). Transient RPC failures
+      // are swallowed so a single bad poll doesn't abort tracking.
+      setMsg(`Bridging to ${destChain.label} — waiting for funds…`);
+
+      // Two-tier detection against the pre-send snapshot:
+      //   • strongTarget = destBefore + minOut → confident the bridge settled.
+      //   • any increase over destBefore → funds arrived but under minOut (a
+      //     dest-side bridge fee / rounding); confirm after a grace window.
+      // The old single ">= destBefore + minOut" gate reported these near-miss
+      // settlements as "not detected" — the main false negative.
+      let minOut = 0n;
+      const minOutStr = quote.minAmountOut ?? quote.simulatedAmountOut ?? quote.amountOut;
+      try {
+        if (minOutStr != null) minOut = BigInt(minOutStr);
+      } catch {
+        /* leave 0n → any increase counts */
+      }
+      const strongTarget = destBefore + (minOut > 0n ? minOut : 1n);
+      const started = Date.now();
+      let firstIncreaseAt = 0;
+      let nullStreak = 0;
+      let received: bigint | null = null;
+      while (Date.now() - started < BRIDGE_TIMEOUT_MS) {
+        await sleep(BRIDGE_POLL_MS);
+        if (cancelledRef.current) return;
+        try {
+          const { balance } = await fetchBalance(destChain.id, outputToken.address, to!);
+          const bal = balance != null ? BigInt(balance) : null;
+          if (bal == null) {
+            // RPC went dark mid-bridge — bail after ~2 min of blind reads to the
+            // explorer fallback rather than spinning the full timeout.
+            if (++nullStreak >= 12) break;
+            continue;
+          }
+          nullStreak = 0;
+          if (bal >= strongTarget) {
+            received = bal - destBefore; // confident settlement
+            break;
+          }
+          if (bal > destBefore) {
+            // Some funds landed, short of minOut — let the balance finish
+            // climbing, then accept the increase.
+            if (firstIncreaseAt === 0) firstIncreaseAt = Date.now();
+            else if (Date.now() - firstIncreaseAt >= BRIDGE_GRACE_MS) {
+              received = bal - destBefore;
+              break;
+            }
+          }
+        } catch {
+          /* transient RPC failure — keep polling */
+        }
+      }
+
+      setPhase("done");
+      const destExplorer = destChain.viem.blockExplorers?.default?.url;
+      if (received != null && received > 0n) {
+        setMsg("");
+        const recv = `${fmtAmount(fromBaseUnits(received.toString(), outputToken.decimals))} ${outputToken.symbol}`;
+        if (destExplorer && to) showToast(`${destExplorer}/address/${to}`, recv);
+        else setMsg(`Received ${recv} on ${destChain.label}.`);
       } else {
-        setPhase("error");
-        setMsg("Transaction reverted");
+        // Never saw the balance move. Source tx is confirmed; settlement just
+        // isn't visible yet — point at the dest address so the user can verify.
+        const track = destExplorer && to ? ` Track it here: ${destExplorer}/address/${to}` : "";
+        setMsg(
+          `Bridge initiated on ${chain.label} — funds not yet detected on ${destChain.label}. Bridges can take several minutes.${track}`,
+        );
       }
     } catch (e) {
       setPhase("error");
@@ -164,20 +358,22 @@ export function ExecuteButton({
     }
   }
 
-  const busy = phase === "switch" || phase === "approve" || phase === "swap";
+  const busy = phase === "switch" || phase === "approve" || phase === "swap" || phase === "bridging";
   const label = !connected
     ? "Connect wallet to trade"
     : !ready
       ? "Enter an amount"
       : insufficientBalance
         ? "Insufficient Balance"
-        : busy
-          ? "Working…"
-          : phase === "done"
-            ? "Trade again"
-            : inputToken && amount
-              ? `Trade ${amount} ${inputToken.symbol}`
-              : "Trade";
+        : phase === "bridging"
+          ? "Bridging…"
+          : busy
+            ? "Working…"
+            : phase === "done"
+              ? "Trade again"
+              : inputToken && amount
+                ? `Trade ${amount} ${inputToken.symbol}`
+                : "Trade";
 
   return (
     <div className="space-y-2">
@@ -189,7 +385,7 @@ export function ExecuteButton({
       >
         {label}
       </button>
-      {msg && phase !== "done" && (
+      {msg && !toast && (
         <div className={`text-xs font-mono px-1 ${phase === "error" ? "text-danger" : "text-muted"}`}>
           {msg}
           {txHash && explorer && (

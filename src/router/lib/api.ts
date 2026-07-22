@@ -26,7 +26,7 @@ export type QuoteArgs = {
   rawDestinationBlockchainId?: string;
   inputToken: string;
   outputToken: string;
-  inputAmount: string; // human decimal
+  inputAmount: string; // human decimal ("0.001") — same-chain and bridge alike
   userAddress: string;
   receiverAddress?: string;
   slippageBps?: number | null;
@@ -67,6 +67,53 @@ export function fetchUsd(chain: string, token: string, signal?: AbortSignal): Pr
 
 export function fetchTokens(chainId: number | string, signal?: AbortSignal): Promise<TokensResponse> {
   return gateway<TokensResponse>("t", { chains: String(chainId) }, signal);
+}
+
+/**
+ * Dest-chain balance (decimal wei string, or null) of `token` held by `address`
+ * on `chain` (our chain id). Used to poll for bridged funds landing on the
+ * destination chain after the source-chain tx has confirmed.
+ */
+export function fetchBalance(
+  chain: string,
+  token: string,
+  address: string,
+  signal?: AbortSignal,
+): Promise<{ balance: string | null }> {
+  return gateway<{ balance: string | null }>("b", { chain, token, address }, signal);
+}
+
+export type CctpStatus = "none" | "pending" | "complete";
+
+type IrisMessage = {
+  status?: string;
+  attestation?: string;
+  decodedMessage?: { destinationDomain?: number | string } | null;
+};
+
+/**
+ * CCTP settlement status for a bridge source tx, via Circle's Iris service
+ * (proxied through /api/g). Deterministic — keyed by the source tx hash:
+ *   "complete" — burn attested, funds will mint / have minted on the dest chain
+ *   "pending"  — CCTP message seen, attestation not yet signed
+ *   "none"     — no CCTP message for this tx (route isn't CCTP → use balance poll)
+ * When `destDomain` is known we pick the message headed to that domain (a tx can
+ * emit several), else the first.
+ */
+export async function fetchCctpStatus(
+  srcDomain: number,
+  txHash: string,
+  destDomain: number | null,
+  signal?: AbortSignal,
+): Promise<CctpStatus> {
+  const res = await gateway<{ messages?: IrisMessage[] }>("s", { domain: srcDomain, hash: txHash }, signal);
+  const msgs = Array.isArray(res.messages) ? res.messages : [];
+  if (msgs.length === 0) return "none";
+  const match =
+    destDomain != null
+      ? msgs.find((m) => Number(m.decodedMessage?.destinationDomain) === destDomain) ?? msgs[0]
+      : msgs[0];
+  return match?.status === "complete" ? "complete" : "pending";
 }
 
 /** Build the same-origin logo URL for a token (image bytes proxied server-side). */
