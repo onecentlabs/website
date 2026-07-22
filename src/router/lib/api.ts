@@ -83,6 +83,39 @@ export function fetchBalance(
   return gateway<{ balance: string | null }>("b", { chain, token, address }, signal);
 }
 
+export type CctpStatus = "none" | "pending" | "complete";
+
+type IrisMessage = {
+  status?: string;
+  attestation?: string;
+  decodedMessage?: { destinationDomain?: number | string } | null;
+};
+
+/**
+ * CCTP settlement status for a bridge source tx, via Circle's Iris service
+ * (proxied through /api/g). Deterministic — keyed by the source tx hash:
+ *   "complete" — burn attested, funds will mint / have minted on the dest chain
+ *   "pending"  — CCTP message seen, attestation not yet signed
+ *   "none"     — no CCTP message for this tx (route isn't CCTP → use balance poll)
+ * When `destDomain` is known we pick the message headed to that domain (a tx can
+ * emit several), else the first.
+ */
+export async function fetchCctpStatus(
+  srcDomain: number,
+  txHash: string,
+  destDomain: number | null,
+  signal?: AbortSignal,
+): Promise<CctpStatus> {
+  const res = await gateway<{ messages?: IrisMessage[] }>("s", { domain: srcDomain, hash: txHash }, signal);
+  const msgs = Array.isArray(res.messages) ? res.messages : [];
+  if (msgs.length === 0) return "none";
+  const match =
+    destDomain != null
+      ? msgs.find((m) => Number(m.decodedMessage?.destinationDomain) === destDomain) ?? msgs[0]
+      : msgs[0];
+  return match?.status === "complete" ? "complete" : "pending";
+}
+
 /** Build the same-origin logo URL for a token (image bytes proxied server-side). */
 export function tokenLogo(chainId: number, address: string): string {
   return `/api/logo?c=${chainId}&a=${address.toLowerCase()}`;

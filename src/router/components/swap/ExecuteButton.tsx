@@ -14,9 +14,9 @@ import {
 } from "@wagmi/core";
 import { erc20Abi, maxUint256, type Hex } from "viem";
 import type { Token, QuoteResponse } from "@r/lib/types";
-import { type SupportedChain, isNativeAddress } from "@r/lib/chains";
+import { type SupportedChain, isNativeAddress, cctpDomain } from "@r/lib/chains";
 import { toBaseUnits, fromBaseUnits, fmtAmount } from "@r/lib/format";
-import { fetchBalance } from "@r/lib/api";
+import { fetchBalance, fetchCctpStatus, type CctpStatus } from "@r/lib/api";
 
 type Phase = "idle" | "switch" | "approve" | "swap" | "bridging" | "done" | "error";
 
@@ -26,6 +26,15 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 // often. Bridges usually land in seconds-to-minutes; give it a generous cap.
 const BRIDGE_TIMEOUT_MS = 20 * 60 * 1000;
 const BRIDGE_POLL_MS = 10_000;
+// After the recipient balance first rises but before it reaches the quoted
+// minimum, wait this long for it to settle, then accept the increase. Covers a
+// dest-side bridge fee / rounding that lands funds just under minAmountOut.
+const BRIDGE_GRACE_MS = 60_000;
+// CCTP attestation polling (Circle Iris). If no CCTP message appears within the
+// probe window after the source tx, the route isn't CCTP → fall back to the
+// dest-balance poll.
+const CCTP_POLL_MS = 8_000;
+const CCTP_PROBE_MS = 90_000;
 
 export function ExecuteButton({
   chain,
@@ -155,11 +164,23 @@ export function ExecuteButton({
       const to = recipient ?? address;
       let destBefore: bigint | null = null;
       if (crossChain && destChain && outputToken && to) {
-        try {
-          const { balance } = await fetchBalance(destChain.id, outputToken.address, to);
-          destBefore = balance != null ? BigInt(balance) : 0n;
-        } catch {
-          destBefore = null;
+        // Retry a few times — a single flaky RPC read shouldn't permanently
+        // disable settlement tracking (previously one failure → null → no poll).
+        // A NULL balance means "couldn't read" (not zero: rpcBalance returns the
+        // string "0" for a genuine zero). Leave destBefore null on repeated nulls
+        // so the explorer fallback fires instead of coercing to 0n and polling a
+        // blind chain for the full 20-minute timeout.
+        for (let i = 0; i < 3 && destBefore == null; i++) {
+          try {
+            const { balance } = await fetchBalance(destChain.id, outputToken.address, to);
+            if (balance != null) {
+              destBefore = BigInt(balance);
+              break;
+            }
+          } catch {
+            /* fall through to retry */
+          }
+          if (i < 2) await sleep(1_500);
         }
       }
 
@@ -196,9 +217,65 @@ export function ExecuteButton({
         return;
       }
 
-      // Cross-chain: the source tx only INITIATES the bridge. Without a baseline
-      // (or output token) we can't confirm settlement — point the user at the
-      // dest explorer instead of falsely claiming receipt.
+      // ── Cross-chain settlement tracking ──────────────────────────────────
+      // Prefer Circle CCTP attestation: deterministic, keyed by the SOURCE tx
+      // hash, so it's immune to the dest token/recipient mismatches that break
+      // balance polling (e.g. a CCTP mint routed through a settlement address,
+      // or output delivered as WETH vs native ETH). Falls back to the balance
+      // poll below only when the route isn't CCTP.
+      setPhase("bridging");
+      setMsg(`Bridging to ${destChain.label}…`);
+      const srcDomain = cctpDomain(chain);
+      const dstDomain = cctpDomain(destChain);
+      if (srcDomain != null) {
+        const probeUntil = Date.now() + CCTP_PROBE_MS; // window to decide "is this CCTP?"
+        const deadline = Date.now() + BRIDGE_TIMEOUT_MS;
+        let cctpRoute = false;
+        let settled = false;
+        while (Date.now() < deadline) {
+          if (cancelledRef.current) return;
+          let status: CctpStatus = "none";
+          try {
+            status = await fetchCctpStatus(srcDomain, hash, dstDomain);
+          } catch {
+            /* transient — keep polling */
+          }
+          if (status === "complete") {
+            settled = true;
+            break;
+          }
+          if (status === "pending") cctpRoute = true;
+          // No CCTP message within the probe window → not a CCTP route; stop and
+          // let the balance poll below handle it.
+          if (!cctpRoute && Date.now() > probeUntil) break;
+          await sleep(CCTP_POLL_MS);
+        }
+        const destExplorer = destChain.viem.blockExplorers?.default?.url;
+        if (settled) {
+          setPhase("done");
+          setMsg("");
+          const raw = quote.simulatedAmountOut ?? quote.amountOut;
+          const recv =
+            outputToken && raw != null
+              ? `${fmtAmount(fromBaseUnits(raw, outputToken.decimals))} ${outputToken.symbol}`
+              : "";
+          if (destExplorer && to) showToast(`${destExplorer}/address/${to}`, recv);
+          else setMsg(`Bridge completed on ${destChain.label}.`);
+          return;
+        }
+        if (cctpRoute) {
+          // CCTP route confirmed, but attestation didn't sign before the timeout.
+          setPhase("done");
+          const track = destExplorer && to ? ` Track it here: ${destExplorer}/address/${to}` : "";
+          setMsg(`Bridge attestation still pending for ${destChain.label} — this can take a few minutes.${track}`);
+          return;
+        }
+        // Not CCTP → fall through to the balance poll.
+      }
+
+      // Non-CCTP route: the source tx only INITIATES the bridge. Without a
+      // baseline (or output token) we can't confirm settlement — point the user
+      // at the dest explorer instead of falsely claiming receipt.
       if (!outputToken || destBefore == null) {
         setPhase("done");
         setMsg(`Bridge sent to ${destChain.label}. Track your funds on the destination explorer.`);
@@ -208,8 +285,14 @@ export function ExecuteButton({
       // Poll the dest chain until the recipient's balance rises past the
       // guaranteed minimum (destBefore + minAmountOut). Transient RPC failures
       // are swallowed so a single bad poll doesn't abort tracking.
-      setPhase("bridging");
       setMsg(`Bridging to ${destChain.label} — waiting for funds…`);
+
+      // Two-tier detection against the pre-send snapshot:
+      //   • strongTarget = destBefore + minOut → confident the bridge settled.
+      //   • any increase over destBefore → funds arrived but under minOut (a
+      //     dest-side bridge fee / rounding); confirm after a grace window.
+      // The old single ">= destBefore + minOut" gate reported these near-miss
+      // settlements as "not detected" — the main false negative.
       let minOut = 0n;
       const minOutStr = quote.minAmountOut ?? quote.simulatedAmountOut ?? quote.amountOut;
       try {
@@ -217,8 +300,10 @@ export function ExecuteButton({
       } catch {
         /* leave 0n → any increase counts */
       }
-      const target = destBefore + (minOut > 0n ? minOut : 1n);
+      const strongTarget = destBefore + (minOut > 0n ? minOut : 1n);
       const started = Date.now();
+      let firstIncreaseAt = 0;
+      let nullStreak = 0;
       let received: bigint | null = null;
       while (Date.now() - started < BRIDGE_TIMEOUT_MS) {
         await sleep(BRIDGE_POLL_MS);
@@ -226,9 +311,25 @@ export function ExecuteButton({
         try {
           const { balance } = await fetchBalance(destChain.id, outputToken.address, to!);
           const bal = balance != null ? BigInt(balance) : null;
-          if (bal != null && bal >= target) {
-            received = bal - destBefore;
+          if (bal == null) {
+            // RPC went dark mid-bridge — bail after ~2 min of blind reads to the
+            // explorer fallback rather than spinning the full timeout.
+            if (++nullStreak >= 12) break;
+            continue;
+          }
+          nullStreak = 0;
+          if (bal >= strongTarget) {
+            received = bal - destBefore; // confident settlement
             break;
+          }
+          if (bal > destBefore) {
+            // Some funds landed, short of minOut — let the balance finish
+            // climbing, then accept the increase.
+            if (firstIncreaseAt === 0) firstIncreaseAt = Date.now();
+            else if (Date.now() - firstIncreaseAt >= BRIDGE_GRACE_MS) {
+              received = bal - destBefore;
+              break;
+            }
           }
         } catch {
           /* transient RPC failure — keep polling */
@@ -236,13 +337,19 @@ export function ExecuteButton({
       }
 
       setPhase("done");
-      if (received != null) {
+      const destExplorer = destChain.viem.blockExplorers?.default?.url;
+      if (received != null && received > 0n) {
         setMsg("");
-        const destExplorer = destChain.viem.blockExplorers?.default?.url;
         const recv = `${fmtAmount(fromBaseUnits(received.toString(), outputToken.decimals))} ${outputToken.symbol}`;
         if (destExplorer && to) showToast(`${destExplorer}/address/${to}`, recv);
+        else setMsg(`Received ${recv} on ${destChain.label}.`);
       } else {
-        setMsg(`Bridge sent. Funds not detected on ${destChain.label} yet — this can take a few minutes.`);
+        // Never saw the balance move. Source tx is confirmed; settlement just
+        // isn't visible yet — point at the dest address so the user can verify.
+        const track = destExplorer && to ? ` Track it here: ${destExplorer}/address/${to}` : "";
+        setMsg(
+          `Bridge initiated on ${chain.label} — funds not yet detected on ${destChain.label}. Bridges can take several minutes.${track}`,
+        );
       }
     } catch (e) {
       setPhase("error");
@@ -278,7 +385,7 @@ export function ExecuteButton({
       >
         {label}
       </button>
-      {msg && phase !== "done" && (
+      {msg && !toast && (
         <div className={`text-xs font-mono px-1 ${phase === "error" ? "text-danger" : "text-muted"}`}>
           {msg}
           {txHash && explorer && (

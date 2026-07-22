@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { coreText, registry, stripLogos } from "@r/lib/upstream";
+import { coreText, registry, stripLogos, cctpMessages } from "@r/lib/upstream";
 import { rpcBalance } from "@r/lib/rpc";
 
 // Node runtime (needs server env + fetch with secret header). Never cached.
@@ -114,6 +114,17 @@ export async function POST(req: Request) {
         if (!chain || !token || !addr) return NextResponse.json({ error: "bad request" }, { status: 400 });
         const balance = await rpcBalance(chain, token, addr);
         return NextResponse.json({ balance }, { headers: { "cache-control": "no-store" } });
+      }
+      case "s": {
+        // CCTP attestation status for a bridge source tx (Circle Iris API).
+        // Validate before interpolating into the upstream URL.
+        const domain = typeof p.domain === "number" ? p.domain : Number(p.domain);
+        const hash = typeof p.hash === "string" ? p.hash : "";
+        if (!Number.isInteger(domain) || domain < 0 || domain > 99 || !/^0x[0-9a-fA-F]{64}$/.test(hash)) {
+          return NextResponse.json({ error: "bad request" }, { status: 400 });
+        }
+        const { status, body } = await cctpMessages(domain, hash);
+        return NextResponse.json(body, { status, headers: { "cache-control": "no-store" } });
       }
       default:
         return NextResponse.json({ error: "unknown action" }, { status: 400 });

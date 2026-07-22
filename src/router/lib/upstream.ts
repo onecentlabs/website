@@ -12,6 +12,8 @@ import "server-only";
 const API_BASE = (process.env.ONECENT_API_BASE || "http://127.0.0.1:8000").replace(/\/+$/, "");
 const API_KEY = process.env.ONECENT_API_KEY || "";
 const REGISTRY_BASE = (process.env.REGISTRY_BASE || "https://tokens-registry.onrender.com").replace(/\/+$/, "");
+// Circle's public CCTP attestation service. Overridable for the sandbox.
+const IRIS_BASE = (process.env.CCTP_IRIS_BASE || "https://iris-api.circle.com").replace(/\/+$/, "");
 
 export type UpstreamResult = { status: number; body: unknown };
 export type UpstreamText = { status: number; text: string; json: boolean };
@@ -58,6 +60,37 @@ export async function coreText(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Query Circle's Iris CCTP attestation service for the messages emitted by
+ * `txHash` on source domain `domain`. Keyed by the source tx hash — the
+ * deterministic way to know a CCTP bridge settled (status flips
+ * pending_confirmations → complete). A 404 means "no message indexed yet"; we
+ * normalize it to an empty list so the caller can tell "not seen" apart from a
+ * real error. Caller must pre-validate `domain`/`txHash` (this interpolates
+ * them into the URL).
+ */
+export async function cctpMessages(domain: number, txHash: string): Promise<UpstreamResult> {
+  let res: Response;
+  try {
+    res = await fetch(`${IRIS_BASE}/v2/messages/${domain}?transactionHash=${txHash}`, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    return { status: 502, body: { error: "attestation service unavailable" } };
+  }
+  if (res.status === 404) return { status: 200, body: { messages: [] } };
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = { messages: [] };
+  }
+  return { status: res.status, body };
 }
 
 /** Call the public token registry (no key). */
