@@ -32,9 +32,8 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
 
 /**
  * Call the core API (key-gated). Returns the RAW response text — never parsed
- * here — so big integers (amountOut in wei, > 2^53) keep full precision; the
- * route handler quotes them before they reach JSON.parse. A timeout guards
- * against the upstream holding the connection open (observed under load).
+ * here — so the route handler can relay it verbatim. A timeout guards against
+ * the upstream holding the connection open (observed under load).
  */
 export async function coreText(
   path: string,

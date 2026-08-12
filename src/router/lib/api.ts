@@ -26,15 +26,15 @@ export type QuoteArgs = {
   rawDestinationBlockchainId?: string;
   inputToken: string;
   outputToken: string;
-  inputAmount: string; // human decimal ("0.001") — same-chain and bridge alike
+  rawInputAmount: string; // atomic base units ("1000000000000000") — sell side
   userAddress: string;
   receiverAddress?: string;
   slippageBps?: number | null;
   maxHops?: number;
+  optimizer?: boolean;
   patchers?: boolean;
   baselines?: boolean;
   simulation?: boolean;
-  tokenData?: boolean;
   incognito?: boolean; // private-mode swap
 };
 
@@ -43,18 +43,18 @@ export function fetchQuote(args: QuoteArgs, signal?: AbortSignal): Promise<Quote
     blockchainId: args.blockchainId,
     inputToken: args.inputToken,
     outputToken: args.outputToken,
-    inputAmount: args.inputAmount,
+    // Sending rawInputAmount (and never rawOutputAmount) is what pins the quote
+    // to the sell side — the widget is exact-in only.
+    rawInputAmount: args.rawInputAmount,
     userAddress: args.userAddress,
     simulation: args.simulation ?? true,
-    // tokenIn/tokenOut metadata is only returned when tokenData is true
-    // (upstream defaults it to false), so always request it.
-    tokenData: args.tokenData ?? true,
   };
   if (args.destinationBlockchainId) p.destinationBlockchainId = args.destinationBlockchainId;
   if (args.rawDestinationBlockchainId) p.rawDestinationBlockchainId = args.rawDestinationBlockchainId;
   if (args.receiverAddress) p.receiverAddress = args.receiverAddress;
   if (args.slippageBps != null) p.slippageBps = args.slippageBps;
   if (args.maxHops != null) p.maxHops = args.maxHops;
+  if (args.optimizer != null) p.optimizer = args.optimizer;
   if (args.patchers != null) p.patchers = args.patchers;
   if (args.baselines != null) p.baselines = args.baselines;
   if (args.incognito) p.incognito = true;
