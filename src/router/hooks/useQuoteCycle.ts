@@ -9,16 +9,16 @@ const PREFETCH_AT_MS = 13_000; // fetch early so the fresh quote lands ~at the 1
 const SIM_MAX_RETRIES = 3; // when a simulation is expected but missing, retry the payload this many times
 const SIM_RETRY_MS = 5_000; // gap between simulation retries
 
-const IDLE: CycleState = { quote: null, quoteInputAmount: null, error: null, loading: false, isStale: false, lastUpdated: null, simulationFailed: false };
+const IDLE: CycleState = { quote: null, quoteRawInput: null, error: null, loading: false, isStale: false, lastUpdated: null, simulationFailed: false };
 
 type CycleState = {
   quote: QuoteResponse | null;
-  quoteInputAmount: string | null; // inputAmount the displayed quote was computed for
+  quoteRawInput: string | null; // rawInputAmount the displayed quote was computed for
   error: string | null;
   loading: boolean;
   isStale: boolean; // fetch still in-flight past the 10s mark
   lastUpdated: number | null;
-  simulationFailed: boolean; // expected a simulatedAmountOut but it's still missing after retries
+  simulationFailed: boolean; // expected a simulated amount but it's still missing after retries
 };
 
 /**
@@ -60,16 +60,16 @@ export function useQuoteCycle(args: QuoteArgs | null, enabled: boolean, expectSi
     pendingRef.current = null;
     progressRef.current = 0;
 
-    // Simulation retry: with enough balance we expect simulatedAmountOut. If it's
-    // missing, re-fetch the same payload up to SIM_MAX_RETRIES times (5s apart) —
-    // the committed quote (amountOut) keeps showing meanwhile. Once the budget is
-    // spent, flag the failure (UI still shows amountOut).
+    // Simulation retry: with enough balance we expect amounts.output.simulated.
+    // If it's missing, re-fetch the same payload up to SIM_MAX_RETRIES times (5s
+    // apart) — the committed quote (routed net) keeps showing meanwhile. Once the
+    // budget is spent, flag the failure (UI still shows the routed amount).
     if (simRetryTimerRef.current) {
       clearTimeout(simRetryTimerRef.current);
       simRetryTimerRef.current = null;
     }
     let simulationFailed = false;
-    if (expectSimRef.current && res.simulatedAmountOut == null) {
+    if (expectSimRef.current && res.amounts?.output?.simulated == null) {
       if (simRetryRef.current < SIM_MAX_RETRIES) {
         simRetryRef.current += 1;
         simRetryTimerRef.current = setTimeout(() => runFetchRef.current(true), SIM_RETRY_MS);
@@ -82,7 +82,7 @@ export function useQuoteCycle(args: QuoteArgs | null, enabled: boolean, expectSi
 
     // args don't change within a cycle without a teardown/restart, so the live
     // ref still reflects the input this quote was fetched for.
-    setState({ quote: res, quoteInputAmount: argsRef.current?.inputAmount ?? null, error: null, loading: false, isStale: false, lastUpdated: Date.now(), simulationFailed });
+    setState({ quote: res, quoteRawInput: argsRef.current?.rawInputAmount ?? null, error: null, loading: false, isStale: false, lastUpdated: Date.now(), simulationFailed });
   }, []);
 
   const runFetch = useCallback(
@@ -145,7 +145,7 @@ export function useQuoteCycle(args: QuoteArgs | null, enabled: boolean, expectSi
 
   // (Re)start whenever the request or enabled-state changes.
   const argsKey = args
-    ? `${args.blockchainId}|${args.inputToken}|${args.outputToken}|${args.inputAmount}|${args.userAddress}|${args.slippageBps}|${args.maxHops}|${args.patchers}|${args.baselines}|${args.simulation}|${expectSimulated}`
+    ? `${args.blockchainId}|${args.destinationBlockchainId}|${args.inputToken}|${args.outputToken}|${args.rawInputAmount}|${args.userAddress}|${args.receiverAddress}|${args.slippageBps}|${args.maxHops}|${args.optimizer}|${args.patchers}|${args.baselines}|${args.simulation}|${args.incognito}|${expectSimulated}`
     : "";
 
   useEffect(() => {
@@ -154,7 +154,7 @@ export function useQuoteCycle(args: QuoteArgs | null, enabled: boolean, expectSi
       abortRef.current?.abort();
       genRef.current++;
       resetCounters();
-      // Clear the displayed quote so a stale amountOut never lingers.
+      // Clear the displayed quote so a stale output amount never lingers.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setState(IDLE);
       return;

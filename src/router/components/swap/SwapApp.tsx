@@ -15,7 +15,7 @@ import { addRecentRecipient, getRecipientLabel } from "@r/lib/recipients";
 import { useTokens } from "@r/hooks/useRegistry";
 import { useQuoteCycle } from "@r/hooks/useQuoteCycle";
 import { fetchUsd, type QuoteArgs } from "@r/lib/api";
-import type { QuoteSettings, Token } from "@r/lib/types";
+import { quoteOut, quoteMinOut, type QuoteSettings, type Token } from "@r/lib/types";
 import { SUPPORTED_CHAINS, DEFAULT_MAX_HOPS, isNativeAddress, nativeGasBufferWei, chainKind, type SupportedChain } from "@r/lib/chains";
 import { normalizeRecipient } from "@r/lib/address";
 import { fromBaseUnits, toBaseUnits, fmtAmount, fmtUsd, shortAddr } from "@r/lib/format";
@@ -202,9 +202,9 @@ export function SwapApp() {
     !sameTokenSameChain && !!effTokenIn && !!effTokenOut && amountValid && (!customRecv || receiverValid);
 
   // Always simulate: the backend funds the sim via state overrides (works even
-  // for the preview address), so we get simulatedAmountOut + computationUnits
-  // (the gas limit) regardless of wallet/balance. hasSufficientBal only decides
-  // what a *missing* simulatedAmountOut means (see below).
+  // for the preview address), so we get amounts.output.simulated +
+  // computationUnits (the gas limit) regardless of wallet/balance.
+  // hasSufficientBal only decides what a *missing* simulated amount means.
   const amountInBase = effTokenIn && amountValid ? toBaseUnits(debouncedAmount, effTokenIn.decimals) : null;
   const hasSufficientBal = !!address && inBalValue != null && amountInBase != null && inBalValue >= amountInBase;
   // Connected + valid amount, but the on-chain balance (public RPC) can't cover it.
@@ -216,9 +216,9 @@ export function SwapApp() {
         blockchainId: chainIn.id,
         inputToken: effTokenIn!.address,
         outputToken: effTokenOut!.address,
-        // Human decimal on every path — same-chain and bridge alike. Core reads
-        // the input as a human amount and returns amountOut in base units (wei).
-        inputAmount: debouncedAmount,
+        // Atomic base units on every path — same-chain and bridge alike.
+        // Sending rawInputAmount is what pins the quote to the sell side.
+        rawInputAmount: amountInBase!.toString(),
         // Destination chain is sent only for actual bridges (src != dest); a
         // differing destinationBlockchainId is what puts core into bridge mode.
         ...(crossChain ? { destinationBlockchainId: chainOut.id } : {}),
@@ -226,9 +226,10 @@ export function SwapApp() {
         receiverAddress: recvAddr,
         slippageBps: settings.slippageBps,
         maxHops: DEFAULT_MAX_HOPS,
-        // Fixed: our router is the source of truth for the optimizer.
-        patchers: true,
-        baselines: false,
+        // Fixed: our router is the source of truth for the search config.
+        optimizer: true,
+        baselines: true,
+        patchers: false,
         simulation: true,
         incognito,
       }
@@ -236,7 +237,7 @@ export function SwapApp() {
 
   // Bridges don't return a simulation (core simulates same-chain only), so don't
   // expect one — otherwise every bridge quote flags a false "simulation failed".
-  const { quote, quoteInputAmount, error, loading, simulationFailed } =
+  const { quote, quoteRawInput, error, loading, simulationFailed } =
     useQuoteCycle(quoteArgs, ready, hasSufficientBal && !crossChain);
 
   const usdIn = useUsd(chainIn.id, effTokenIn);
@@ -260,20 +261,20 @@ export function SwapApp() {
   );
   const usdNative = useUsd(chainIn.id, nativeToken);
 
-  // Only show amountOut when the displayed quote matches the *current* input.
+  // Only show an output when the displayed quote matches the *current* input.
   // `amount === debouncedAmount` clears it the instant the user types/clears
-  // (before the debounce fires); `quoteInputAmount === debouncedAmount` keeps it
+  // (before the debounce fires); `quoteRawInput === amountInBase` keeps it
   // cleared while the fresh quote for the new amount is still in flight.
   const quoteMatchesInput =
-    !!quote && amount === debouncedAmount && quoteInputAmount === debouncedAmount;
+    !!quote && amount === debouncedAmount && quoteRawInput === (amountInBase?.toString() ?? null);
 
-  // Prefer simulatedAmountOut; otherwise show routing amountOut. When we expect a
-  // simulation (enough balance) but it's missing, the hook retries the payload
-  // and amountOut shows meanwhile; simulationFailed flips once retries are spent.
-  const simOut = quoteMatchesInput ? quote?.simulatedAmountOut ?? null : null;
+  // Shows the net amount (output after fees). When we expect a simulation
+  // (enough balance) but it's missing, the hook retries the payload;
+  // simulationFailed flips once the retry budget is spent — the net amount is
+  // still shown, but without a simulation there's no gas figure to go with it.
   const simFailed = quoteMatchesInput && simulationFailed;
 
-  const outRaw = quoteMatchesInput && quote ? simOut ?? quote.amountOut : null;
+  const outRaw = quoteMatchesInput && quote ? quoteOut(quote) : null;
 
   const outHuman = useMemo(
     () => (outRaw != null && effTokenOut ? fromBaseUnits(outRaw, effTokenOut.decimals) : null),
@@ -284,14 +285,14 @@ export function SwapApp() {
   const outUsd = outHuman != null && usdOut.data != null ? outHuman * usdOut.data : null;
 
   const slipBps = settings.slippageBps;
-  // Prefer core's guaranteed minimum from the quote (minAmountOut, slippage-aware
-  // incl. Auto). Fall back to the client estimate only when core omits it.
+  // Prefer core's guaranteed minimum from the quote (amounts.output.minimum,
+  // slippage-aware incl. Auto). Fall back to the client estimate when core omits
+  // it — bridges report "0", which quoteMinOut normalizes to null.
   const minReceived = useMemo(() => {
-    if (quoteMatchesInput && quote?.minAmountOut != null && effTokenOut) {
-      return fromBaseUnits(quote.minAmountOut, effTokenOut.decimals);
-    }
+    const min = quoteMatchesInput && quote ? quoteMinOut(quote) : null;
+    if (min != null && effTokenOut) return fromBaseUnits(min, effTokenOut.decimals);
     return slipBps != null && outHuman != null ? outHuman * (1 - slipBps / 10_000) : null;
-  }, [quoteMatchesInput, quote?.minAmountOut, effTokenOut, slipBps, outHuman]);
+  }, [quoteMatchesInput, quote, effTokenOut, slipBps, outHuman]);
 
   const gasUnits =
     quoteMatchesInput && quote?.computationUnits != null ? Number(quote.computationUnits) : null;

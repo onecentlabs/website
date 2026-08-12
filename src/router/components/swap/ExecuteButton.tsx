@@ -13,7 +13,7 @@ import {
   switchChain,
 } from "@wagmi/core";
 import { erc20Abi, maxUint256, type Hex } from "viem";
-import type { Token, QuoteResponse } from "@r/lib/types";
+import { quoteOut, quoteMinOut, type Token, type QuoteResponse } from "@r/lib/types";
 import { type SupportedChain, isNativeAddress, cctpDomain } from "@r/lib/chains";
 import { toBaseUnits, fromBaseUnits, fmtAmount } from "@r/lib/format";
 import { fetchBalance, fetchCctpStatus, type CctpStatus } from "@r/lib/api";
@@ -28,7 +28,7 @@ const BRIDGE_TIMEOUT_MS = 20 * 60 * 1000;
 const BRIDGE_POLL_MS = 10_000;
 // After the recipient balance first rises but before it reaches the quoted
 // minimum, wait this long for it to settle, then accept the increase. Covers a
-// dest-side bridge fee / rounding that lands funds just under minAmountOut.
+// dest-side bridge fee / rounding that lands funds just under the quoted minimum.
 const BRIDGE_GRACE_MS = 60_000;
 // CCTP attestation polling (Circle Iris). If no CCTP message appears within the
 // probe window after the source tx, the route isn't CCTP → fall back to the
@@ -207,7 +207,7 @@ export function ExecuteButton({
         setPhase("done");
         setMsg(""); // success surfaces as the top-right notification, not inline
         if (explorer) {
-          const raw = quote.simulatedAmountOut ?? quote.amountOut;
+          const raw = quoteOut(quote);
           const recv =
             outputToken && raw != null
               ? `${fmtAmount(fromBaseUnits(raw, outputToken.decimals))} ${outputToken.symbol}`
@@ -254,7 +254,7 @@ export function ExecuteButton({
         if (settled) {
           setPhase("done");
           setMsg("");
-          const raw = quote.simulatedAmountOut ?? quote.amountOut;
+          const raw = quoteOut(quote);
           const recv =
             outputToken && raw != null
               ? `${fmtAmount(fromBaseUnits(raw, outputToken.decimals))} ${outputToken.symbol}`
@@ -283,7 +283,7 @@ export function ExecuteButton({
       }
 
       // Poll the dest chain until the recipient's balance rises past the
-      // guaranteed minimum (destBefore + minAmountOut). Transient RPC failures
+      // guaranteed minimum (destBefore + minimum). Transient RPC failures
       // are swallowed so a single bad poll doesn't abort tracking.
       setMsg(`Bridging to ${destChain.label} — waiting for funds…`);
 
@@ -294,7 +294,7 @@ export function ExecuteButton({
       // The old single ">= destBefore + minOut" gate reported these near-miss
       // settlements as "not detected" — the main false negative.
       let minOut = 0n;
-      const minOutStr = quote.minAmountOut ?? quote.simulatedAmountOut ?? quote.amountOut;
+      const minOutStr = quoteMinOut(quote) ?? quoteOut(quote);
       try {
         if (minOutStr != null) minOut = BigInt(minOutStr);
       } catch {

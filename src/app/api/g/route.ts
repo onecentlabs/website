@@ -16,10 +16,10 @@ export const dynamic = "force-dynamic";
 
 const QUOTE_KEYS = [
   "blockchainId", "destinationBlockchainId", "rawDestinationBlockchainId",
-  "inputToken", "outputToken", "inputAmount", "userAddress",
-  "receiverAddress", "simulationAddress", "slippageBps", "maxHops",
-  "simulation", "patchers", "baselines", "rawBlockchainId", "cid",
-  "tokenData", "incognito",
+  "inputToken", "outputToken", "rawInputAmount", "userAddress",
+  "receiverAddress", "slippageBps", "maxHops",
+  "simulation", "optimizer", "patchers", "baselines", "rawBlockchainId", "cid",
+  "incognito",
 ] as const;
 
 const PRICE_KEYS = ["chain", "token", "foreign_token", "max_hops"] as const;
@@ -48,30 +48,14 @@ function upstreamError(status: number): string {
   return "Upstream request failed";
 }
 
-/**
- * Quote big integers (amountOut / minAmountOut / netAmountOut / simulatedAmountOut
- * come back as bare JSON numbers in wei, which lose precision past 2^53 once
- * JSON.parse runs). We wrap them in quotes at the text level so the client parses
- * exact strings. Path edge amounts are already quoted upstream, so the
- * lookbehind-free regex (digits immediately after the colon, no quote) never
- * touches them.
- */
-function quoteBigInts(text: string): string {
-  return text.replace(
-    /"(amountOut|minAmountOut|netAmountOut|simulatedAmountOut)":\s*(-?\d+)(?=\s*[,}])/g,
-    '"$1":"$2"',
-  );
-}
-
 async function relayCore(
   path: string,
   params: Record<string, string | number | boolean>,
   signal: AbortSignal,
-  transform?: (t: string) => string,
 ): Promise<Response> {
   const { status, text, json } = await coreText(path, params, signal);
   if (status >= 200 && status < 300 && (json || looksJson(text))) {
-    return new Response(transform ? transform(text) : text, { status, headers: NO_STORE });
+    return new Response(text, { status, headers: NO_STORE });
   }
   // Surface upstream JSON error verbatim if it gave us one; else a clean message.
   if (looksJson(text)) return new Response(text, { status, headers: NO_STORE });
@@ -92,7 +76,7 @@ export async function POST(req: Request) {
   try {
     switch (action) {
       case "q":
-        return await relayCore("/quote", pick(p, QUOTE_KEYS), req.signal, quoteBigInts);
+        return await relayCore("/quote", pick(p, QUOTE_KEYS), req.signal);
       case "p":
         return await relayCore("/price", pick(p, PRICE_KEYS), req.signal);
       case "u":
