@@ -6,10 +6,10 @@ export function Hero() {
     <section>
       <div className="shell flex flex-col justify-center min-h-[calc(100dvh-3.5rem)] py-20">
       <Reveal>
-        <h1 className="max-w-full pt-16 text-[clamp(1.29rem,3.22vw,2.99rem)] leading-none tracking-tight sm:pt-24">
+        <h1 className="max-w-full text-[clamp(1rem,3.6vw,3.3rem)] leading-[0.98] tracking-tight">
           <span className="block whitespace-nowrap text-accent uppercase">One interface</span>
-          <span className="mt-[0.9em] ml-[1ch] block whitespace-nowrap uppercase sm:ml-[4.75ch]">
-            For fragmented markets
+          <span className="mt-[0.18em] block whitespace-nowrap uppercase">
+            For onchain markets
           </span>
         </h1>
         <div
@@ -18,7 +18,7 @@ export function Hero() {
         >
           <span className="text-muted select-none">&gt;&nbsp;</span>
           <Typewriter
-            words={["pricing", "routing", "solving", "bridging", "yields"]}
+            words={["routing", "pricing", "solving", "bridging", "yields"]}
             className="text-accent"
           />
         </div>
