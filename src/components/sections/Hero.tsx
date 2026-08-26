@@ -6,8 +6,11 @@ export function Hero() {
     <section>
       <div className="shell flex flex-col justify-center min-h-[calc(100dvh-3.5rem)] py-20">
       <Reveal>
-        <h1 className="text-[clamp(2.75rem,6.5vw,5.25rem)] leading-[1.08] tracking-tight max-w-[16ch]">
-          DeFi, <span className="text-accent">abstracted.</span>
+        <h1 className="max-w-full text-[clamp(1.4rem,3.5vw,3.25rem)] leading-none tracking-tight">
+          <span className="block whitespace-nowrap text-accent uppercase">One interface</span>
+          <span className="mt-[0.6em] ml-[1ch] block whitespace-nowrap uppercase sm:ml-[4.75ch]">
+            For onchain markets
+          </span>
         </h1>
         <div
           className="mt-10 sm:mt-14 font-mono text-[clamp(1.35rem,2vw,1.7rem)] leading-none"

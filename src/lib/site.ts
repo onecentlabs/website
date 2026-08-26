@@ -1,6 +1,6 @@
 export const site = {
   name: "OneCent Labs",
-  tagline: "DeFi, abstracted.",
+  tagline: "One interface for onchain markets.",
   description:
     "OneCent Labs is a unified suite of on-chain and off-chain services that abstract away the complexity of DeFi. One clean interface for all DeFi applications.",
   url: "https://theonecentlabs.com",
