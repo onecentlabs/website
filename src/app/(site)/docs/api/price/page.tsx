@@ -5,7 +5,7 @@ import { site } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Price API",
   description:
-    "Pair and USD pricing from the OneCent rates engine, with a confidence signal on every response.",
+    "Pair and USD pricing from the OneCent rates engine, fused across venues rather than read from a single pool.",
   alternates: { canonical: "/docs/api/price" },
 };
 
@@ -61,16 +61,14 @@ export default function PriceApiPage() {
           Prices move every block. Poll on an interval that matches how you use the number
           rather than caching it for long periods.
         </li>
-        <li>
-          Both endpoints are key-gated and share the limits set on your key.
-        </li>
+        <li>Both endpoints are key-gated.</li>
       </ul>
 
       <h2>Access</h2>
       <p>
         Request a key through the <Link href="/#contact">contact form</Link> or by emailing{" "}
         <a href={`mailto:${site.email}`}>{site.email}</a>. See{" "}
-        <Link href="/docs/api">API access</Link> for how keys and limits work.
+        <Link href="/docs/api">API access</Link> for how keys work.
       </p>
     </article>
   );

@@ -30,10 +30,12 @@ export default function DocsOverviewPage() {
         <div className="doc-def">
           <dt>Router</dt>
           <dd>
-            Solves execution across 80+ liquidity modules, 70+ AMM and DEX protocols plus 11
-            RFQ market makers, over 38,000+ indexed pools. Each protocol is integrated with
-            its own math rather than a generic interface, so quotes reflect how that venue
-            actually prices.
+            Solves execution across every integrated venue on the network you are trading:
+            110+ liquidity modules on Arbitrum (100+ AMM and DEX protocols plus 11 RFQ market
+            makers) over 38,000+ indexed pools, and 80+ modules on Base (70+ AMM and DEX plus
+            the same 11 RFQ) over 20,000+ pools. Each protocol is integrated with its own
+            math rather than a generic interface, so quotes reflect how that venue actually
+            prices.
           </dd>
         </div>
         <div className="doc-def">
@@ -59,9 +61,9 @@ export default function DocsOverviewPage() {
         </li>
         <li>
           <strong>Search.</strong> Candidate paths are built from indexed pool state and RFQ
-          quotes, priced with each protocol&apos;s own curve, split across pools where that
-          improves the result, and pruned by gas cost and execution risk rather than headline
-          output.
+          quotes, priced with each protocol&apos;s own curve, and split across pools where
+          that improves the result. Routes are ranked on output by default; ranking net of
+          execution cost is available on request through the API.
         </li>
         <li>
           <strong>Quote.</strong> The winning route is simulated against current chain state

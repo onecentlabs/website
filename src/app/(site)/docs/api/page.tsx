@@ -16,7 +16,8 @@ export default function ApiPage() {
       <h1>API access</h1>
       <p className="doc-lead">
         The Router app is one client of our engine. The same routing, quoting and pricing is
-        available over HTTP, across 80+ liquidity modules and 38,000+ indexed pools.
+        available over HTTP: 110+ liquidity modules and 38,000+ indexed pools on Arbitrum,
+        80+ modules and 20,000+ pools on Base.
       </p>
 
       <h2>Endpoints</h2>
@@ -57,7 +58,10 @@ export default function ApiPage() {
           Keys are server-side credentials. Do not ship one in a browser bundle or mobile
           app.
         </li>
-        <li>Rate limits are per key and agreed when it is issued.</li>
+        <li>
+          Capacity is managed globally rather than by per-key rate limits. Tell us your
+          expected volume so we can plan for it.
+        </li>
       </ul>
 
       <h2>Operating notes</h2>
@@ -67,8 +71,9 @@ export default function ApiPage() {
           promptly.
         </li>
         <li>
-          <strong>Load shedding.</strong> Under pressure the engine rejects requests rather
-          than serving them slowly. These responses are retryable.
+          <strong>Load shedding.</strong> Quoting runs a bounded number of solves at once.
+          Beyond that, requests wait briefly for a slot and are then rejected rather than
+          served slowly. Those rejections are retryable and say nothing about your request.
         </li>
         <li>
           <strong>Response ids.</strong> Errors are terse but each response carries an id we

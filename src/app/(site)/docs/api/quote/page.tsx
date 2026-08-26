@@ -24,10 +24,11 @@ export default function QuoteApiPage() {
         <div className="doc-def">
           <dt>Solve a trade</dt>
           <dd>
-            Searches 80+ liquidity modules, 70+ AMM and DEX protocols plus 11 RFQ market
-            makers, across 38,000+ indexed pools. Each protocol is priced with its own curve,
-            AMM and RFQ liquidity compete in the same search, and the order is split across
-            pools where that improves the result.
+            Searches every integrated venue on the network: 110+ liquidity modules and
+            38,000+ indexed pools on Arbitrum, 80+ modules and 20,000+ pools on Base, with 11
+            RFQ market makers quoting alongside AMM and DEX liquidity in the same search.
+            Each protocol is priced with its own curve, and the order is split across pools
+            where that improves the result.
           </dd>
         </div>
         <div className="doc-def">
@@ -70,7 +71,10 @@ export default function QuoteApiPage() {
         </div>
         <div className="doc-def">
           <dt>Rank net of gas</dt>
-          <dd>Optionally select the winning route after execution cost rather than on gross output.</dd>
+          <dd>
+            Routes are ranked on gross output unless you ask for net-of-gas ranking, which
+            scores them after execution cost. On expensive networks the two answers differ.
+          </dd>
         </div>
         <div className="doc-def">
           <dt>Bridge in one call</dt>
@@ -104,8 +108,7 @@ export default function QuoteApiPage() {
       <ul>
         <li>A key scoped to the endpoints you use.</li>
         <li>
-          The full reference: parameters and defaults, response fields, error codes and your
-          limits.
+          The full reference: parameters and defaults, response fields and error codes.
         </li>
         <li>Bridging and private mode enabled on request.</li>
       </ul>
