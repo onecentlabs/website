@@ -10,29 +10,44 @@ export type Token = {
 /** /tokens response: { "<chainId>": Token[] } (logoURI stripped by proxy). */
 export type TokensResponse = Record<string, Token[]>;
 
-export type PathEdge = {
-  tokenIn: string;
-  tokenOut: string;
-  protocolId: string;
-  poolAddress: string;
-  amountIn: string; // raw base units
-  amountOut: string; // raw base units
-  hop: number;
+/**
+ * One side (input/output) of a quote, all raw base units as strings. The side
+ * the caller pinned carries `specified`; the solved side carries `quoted` /
+ * `net` plus a bound — `minimum` on a sell, `maximum` on a buy. `simulated` is
+ * only populated when simulation=true (and never for bridges).
+ */
+export type QuoteSide = {
+  specified?: string | null;
+  quoted?: string | null;
+  net?: string | null;
+  minimum?: string | null;
+  maximum?: string | null;
+  simulated?: string | null;
 };
 
 export type QuoteResponse = {
   qid: string;
-  amountOut: string; // raw base units of output token
-  minAmountOut?: string | null; // raw base units — guaranteed minimum (slippage-adjusted) from core
-  netAmountOut?: string | null; // raw base units — output net of fees, when core provides it
+  orderType?: "sell" | "buy";
   routerAddress: string;
   calldata: string;
-  simulatedAmountOut?: string | null;
-  computationUnits?: number | string | null;
-  /** Detailed route. Absent on older core builds — UI synthesizes a single leg. */
-  path?: PathEdge[];
+  computationUnits?: number | string | null; // gas units; null unless simulation=true
+  amounts?: { input: QuoteSide; output: QuoteSide };
   error?: string;
 };
+
+/** Output to display: `net` is what the user actually receives (routed amount
+ *  less fees). Falls back to the simulated/quoted figures when core omits it
+ *  (bridges report net: null). */
+export function quoteOut(q: QuoteResponse): string | null {
+  const o = q.amounts?.output;
+  return o?.net ?? o?.simulated ?? o?.quoted ?? null;
+}
+
+/** Guaranteed minimum output. Bridges report "0" — treat that as "no bound". */
+export function quoteMinOut(q: QuoteResponse): string | null {
+  const m = q.amounts?.output?.minimum;
+  return m != null && m !== "0" ? m : null;
+}
 
 export type UsdResponse = {
   chain: string;
