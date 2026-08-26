@@ -9,7 +9,7 @@ export function Hero() {
         <h1 className="max-w-full text-[clamp(1.4rem,3.5vw,3.25rem)] leading-none tracking-tight">
           <span className="block whitespace-nowrap text-accent uppercase">One interface</span>
           <span className="mt-[0.6em] ml-[1ch] block whitespace-nowrap uppercase sm:ml-[4.75ch]">
-            For onchain markets
+            For fragmented markets
           </span>
         </h1>
         <div
