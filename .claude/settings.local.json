@@ -8,7 +8,19 @@
       "Bash(npx tsc:*)",
       "Bash(npx next:*)",
       "Bash(git checkout:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(wc -l src/router/components/swap/*.tsx src/router/lib/*.ts src/lib/site.ts)",
+      "Bash(node -p \"require\\(''''next/package.json''''\\).version\")",
+      "Bash(npx eslint:*)",
+      "Bash(curl -s http://localhost:3311/docs/trading)",
+      "Bash(pkill -f 'next dev')",
+      "Bash(ls \"src/app/\\(site\\)/docs\")",
+      "Bash(for p:*)",
+      "Bash(do printf:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} \" \"http://localhost:3000$p\")",
+      "Bash(done)",
+      "Bash(taskkill //IM node.exe //F.)",
+      "Bash(npm run:*)"
     ]
   }
 }
