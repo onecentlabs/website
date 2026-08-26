@@ -6,9 +6,9 @@ export function Hero() {
     <section>
       <div className="shell flex flex-col justify-center min-h-[calc(100dvh-3.5rem)] py-20">
       <Reveal>
-        <h1 className="max-w-full text-[clamp(1.4rem,3.5vw,3.25rem)] leading-none tracking-tight">
+        <h1 className="max-w-full pt-16 text-[clamp(1.29rem,3.22vw,2.99rem)] leading-none tracking-tight sm:pt-24">
           <span className="block whitespace-nowrap text-accent uppercase">One interface</span>
-          <span className="mt-[0.6em] ml-[1ch] block whitespace-nowrap uppercase sm:ml-[4.75ch]">
+          <span className="mt-[0.9em] ml-[1ch] block whitespace-nowrap uppercase sm:ml-[4.75ch]">
             For fragmented markets
           </span>
         </h1>
